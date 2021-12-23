@@ -1,8 +1,13 @@
+import { promises as fs } from 'fs';
 import { evalCfn } from "./intrinstics";
 import { schema } from "./schema";
 import { analyzeSubPattern, isNonLiteral } from "./sub";
 
 export class Template {
+  public static async fromFile(fileName: string): Promise<Template> {
+    return new Template(JSON.parse(await fs.readFile(fileName, { encoding: 'utf-8' })));
+  }
+
   constructor(private readonly template: schema.Template) {
   }
 
@@ -35,7 +40,7 @@ function templateDependencies(resources: Record<string, schema.Resource>): Map<s
   const ret = new Map<string, Set<string>>();
 
   for (const [id, resource] of Object.entries(resources)) {
-    for (const dependsOn of resource?.DependsOn ?? []) {
+    for (const dependsOn of makeList(resource?.DependsOn ?? [])) {
       record(id, dependsOn);
     }
     evalCfn(resource, {
@@ -69,6 +74,9 @@ function templateDependencies(resources: Record<string, schema.Resource>): Map<s
   }
 
   function record(logicalId: string, dependsOn: string) {
+    if (logicalId === dependsOn) {
+      throw new Error(`${logicalId} cannot depend on itself`);
+    }
     let set = ret.get(logicalId);
     if (!set) {
       set = new Set<string>();
@@ -78,4 +86,8 @@ function templateDependencies(resources: Record<string, schema.Resource>): Map<s
   }
 
   return ret;
+}
+
+function makeList<A>(x: A | A[]): A[] {
+  return Array.isArray(x) ? x : [x];
 }

@@ -62,10 +62,10 @@ export class StandardEvaluations implements IntrinsicsEvaluator {
     const map = this.context.mappings?.[mapName];
     if (!map) { throw new Error(`No such Mapping: ${mapName}`); }
     const inner = map[key1];
-    if (!inner) { throw new Error(`Mapping ${mapName} has no key '${key1}'`); }
+    if (!inner) { throw new Error(`Mapping ${mapName} has no key '${key1}' (available: ${Object.keys(map)})`); }
 
-    const ret = map[key2];
-    if (ret === undefined) { throw new Error(`Mapping ${mapName}.${key1} has no key '${key2}'`); }
+    const ret = inner[key2];
+    if (ret === undefined) { throw new Error(`Mapping ${mapName}[${key1}] has no key '${key2}' (available: ${Object.keys(inner)})`); }
     return ret;
   }
 
@@ -146,7 +146,11 @@ export function evalCfn(xs: any, walker: IntrinsicsEvaluator): any {
 
   const keys = Object.keys(xs);
   if (keys.length === 1) {
-    return evalIntrinsic(keys[0]!, xs, walker);
+    try {
+      return evalIntrinsic(keys[0]!, xs, walker);
+    } catch (e: any) {
+      throw new Error(`${e.message} while evaluating ${JSON.stringify(xs)}`);
+    }
   }
 
   return mkDict(Object.entries(xs)
@@ -156,8 +160,9 @@ export function evalCfn(xs: any, walker: IntrinsicsEvaluator): any {
 
 type KeysOfUnion<T> = T extends T ? keyof T : never;
 
-function evalIntrinsic(key: string, params: schema.Intrinsic, walker: IntrinsicsEvaluator) {
+function evalIntrinsic(key: string, params: schema.Intrinsic, walker: IntrinsicsEvaluator): any | undefined {
   let ret: any = undefined;
+
   // FIXME: should validate types here as well
   evalCase('Fn::Base64', x => walker.base64(recurse(x)));
   evalCase('Fn::Cidr', x => walker.cidr(recurse(x[0]), x[1], x[2]));
@@ -172,7 +177,7 @@ function evalIntrinsic(key: string, params: schema.Intrinsic, walker: Intrinsics
   evalCase('Fn::Sub', x => typeof x === 'string' ? walker.sub(x) : walker.sub(x[0], recurse(x[1])));
   evalCase('Ref', x => walker.ref(x));
 
-  return ret ?? evalCfn(params, walker);
+  return ret ?? { key: recurse((params as any)[key]) };
 
   function recurse(x: any): any {
     return evalCfn(x, walker);

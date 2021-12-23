@@ -2,16 +2,22 @@
  * A queue that will deliver its values in topologically sorted order
  */
 export class TopoQueue<A> {
-  private readonly remaining: Set<string>;
-  private available!: Array<string>;
+  private readonly blocked: Set<string>;
+  private available = new Array<string>();
 
   constructor(private readonly nodes: Record<string, A>, private readonly dependencies: Map<string, Set<string>>) {
-    this.remaining = new Set(Object.keys(nodes));
+    const nodeKeys = new Set(Object.keys(nodes));
+    this.blocked = new Set(Object.keys(nodes));
+
+    // Restrict dependencies to only keys in nodes
+    for (const [name, deps] of this.dependencies.entries()) {
+      this.dependencies.set(name, intersect(deps, nodeKeys));
+    }
     this.determineAvailable();
   }
 
   public isEmpty() {
-    return Object.keys(this.remaining).length === 0;
+    return this.blocked.size + this.available.length === 0;
   }
 
   public take(): QueueElement<A> {
@@ -50,18 +56,22 @@ export class TopoQueue<A> {
   }
 
   private advance(key: string) {
-    this.remaining.delete(key);
     for (const depSet of this.dependencies.values()) {
       depSet.delete(key);
     }
+    this.determineAvailable();
   }
 
   private determineAvailable() {
-    this.available = Array.from(this.remaining)
-      .filter((key) =>
-        !Array.from(this.dependencies.values()).some((deps) => deps.has(key)));
+    const avail = Array.from(this.blocked)
+      .filter(key => !this.dependencies.get(key)?.size);
 
-    if (this.remaining.size > 0 && this.available.length === 0) {
+    for (const x of avail) {
+      this.blocked.delete(x);
+    }
+    this.available.push(...avail);
+
+    if (this.blocked.size > 0 && this.available.length === 0) {
       const cycle = findCycle(this.dependencies);
       throw new Error(`Dependency cycle in graph: ${cycle.join(' => ')}`);
     }
@@ -103,4 +113,8 @@ function findCycle(deps: Map<string, Set<string>>): string[] {
 
     return undefined;
   }
+}
+
+function intersect<A>(xs: Set<A>, ys: Set<A>) {
+  return new Set(Array.from(xs).filter(x => ys.has(x)));
 }
