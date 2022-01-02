@@ -46,7 +46,10 @@ export class StandardEvaluator implements IntrinsicsEvaluator {
     });
   }
 
+  public readonly context: Context;
+
   constructor(private readonly sources: EvaluationSources) {
+    this.context = sources.context;
   }
 
   public evaluate(what: any) {

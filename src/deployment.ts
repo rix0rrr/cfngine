@@ -1,6 +1,7 @@
 import { Environment } from './environment';
 import { Context, evalCfn, IntrinsicsEvaluator, NO_VALUE, StandardEvaluator } from './intrinstics';
 import { schema } from './schema';
+import { Stack } from './stack';
 import { Template } from './template';
 
 
@@ -17,38 +18,43 @@ export interface DeploymentOptions {
 }
 
 export class Deployment {
-  private readonly context: Context = new Map();
-  private readonly evaluator: IntrinsicsEvaluator;
+  private readonly environment: Environment;
+  private readonly stack: Stack;
+
   private _outputs?: Record<string, string>;
   private _exports?: Record<string, string>;
-  private readonly environment: Environment;
 
   constructor(private readonly template: Template, private readonly options: DeploymentOptions = {}) {
     this.environment = options.environment ?? Environment.default();
-    this.seedContextWithParameters();
-    this.seedContextWithPseudos();
-    this.evaluator = StandardEvaluator.forTemplate(this.template, this.context, this.environment.exports);
+
+    this.stack = new Stack({
+      stackName: options.stackName ?? 'StackName',
+      stackId: options.stackId ?? '51af3dc0-da77-11e4-872e-1234567db123',
+      resourceNames: {},
+      template,
+      environment: options.environment,
+      parameterValues: options.parameterValues,
+    });
   }
 
   public forEach(block: (x: ResourceDeployment) => ResourceDeploymentResult) {
     const queue = this.template.resourceGraph().topoQueue();
     while (!queue.isEmpty()) {
-      queue.withNext((logicalId, resource) => {
-        if (resource.Condition && !this.evaluate(resource.Condition)) {
+      queue.withNext((logicalId, _resource) => {
+        const resource = this.stack.evaluatedResource(logicalId);
+
+        if (resource.Condition && !resource.Condition) {
           // Skip
           return;
         }
 
         const result = block({
           logicalId,
-          resource: this.evaluate(resource),
+          resource,
           template: this.template,
         });
 
-        this.context.set(logicalId, {
-          primaryValue: result.physicalId,
-          attributes: result.attributes,
-        });
+        this.stack.addResource(logicalId, result.physicalId, result.attributes);
       });
     }
     this.evaluateOutputs();
@@ -74,43 +80,18 @@ export class Deployment {
     }
   }
 
-  private evaluate(what: any) {
-    return evalCfn(what, this.evaluator);
-  }
-
-  private seedContextWithParameters() {
-    this.template.parameters.seedDefaults(this.context);
-    for (const [name, value] of Object.entries(this.options.parameterValues ?? {})) {
-      this.context.set(name, { primaryValue: this.template.parameters.parse(name, value) });
-    }
-    this.template.parameters.assertAllPresent(this.context);
-  }
-
-  private seedContextWithPseudos() {
-    const stackName = this.options.stackName ?? 'StackName';
-    const stackId = this.options.stackId ?? '51af3dc0-da77-11e4-872e-1234567db123';
-    const stackArn = `arn:${this.environment.partition}:cloudformation:${this.environment.region}:${this.environment.accountId}:stack/${stackName}/${stackId}`;
-
-    this.context.set('AWS::NoValue', { primaryValue: NO_VALUE });
-    this.context.set('AWS::NotificationARNs', { primaryValue: [] });
-    this.context.set('AWS::StackName', { primaryValue: stackName });
-    this.context.set('AWS::StackId', { primaryValue: stackArn });
-
-    this.environment.seedContext(this.context);
-  }
-
   private evaluateOutputs() {
     this._outputs = {};
     this._exports = {};
     for (const [name, output] of Object.entries(this.template.outputs)) {
-      if (output.Condition && !this.evaluate(output.Condition)) {
+      if (output.Condition && !this.stack.evaluate(output.Condition)) {
         continue;
       }
 
-      const value = this.evaluate(output.Value);
+      const value = this.stack.evaluate(output.Value);
       this._outputs[name] = value;
       if (output.Export?.Name) {
-        this._exports[this.evaluate(output.Export?.Name)] = value;
+        this._exports[this.stack.evaluate(output.Export?.Name)] = value;
       }
     }
   }
