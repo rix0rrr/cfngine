@@ -1,7 +1,7 @@
-import { schema } from "./schema";
-import { analyzeSubPattern } from "./sub";
-import { Template } from "./template";
-import { mkDict } from "./_util";
+import { schema } from './schema';
+import { analyzeSubPattern } from './private/sub';
+import { Template } from './template';
+import { mkDict } from './private/util';
 
 export const NO_VALUE = Symbol('AWS::NoValue');
 
@@ -29,25 +29,28 @@ export interface IntrinsicsEvaluator {
   sub(x: string, additionalContext?: Record<string, ContextValue>): string;
 }
 
-export interface EvaluationContext {
+export interface EvaluationSources {
   readonly context: Context;
   readonly mappings?: Record<string, schema.Mapping>;
   readonly conditions?: Record<string, schema.Condition>;
   readonly exports?: Record<string, string>;
 }
 
-export class StandardEvaluations implements IntrinsicsEvaluator {
+export class StandardEvaluator implements IntrinsicsEvaluator {
   public static forTemplate(template: Template, context: Context, exports: Record<string, string> = {}) {
-    return new StandardEvaluations({
+    return new StandardEvaluator({
       context,
       conditions: template.conditions,
       mappings: template.mappings,
       exports,
     });
-
   }
 
-  constructor(private readonly context: EvaluationContext) {
+  constructor(private readonly sources: EvaluationSources) {
+  }
+
+  public evaluate(what: any) {
+    return evalCfn(what, this);
   }
 
   public base64(x: string): string {
@@ -59,7 +62,7 @@ export class StandardEvaluations implements IntrinsicsEvaluator {
   }
 
   public findInMap(mapName: string, key1: string, key2: string): string {
-    const map = this.context.mappings?.[mapName];
+    const map = this.sources.mappings?.[mapName];
     if (!map) { throw new Error(`No such Mapping: ${mapName}`); }
     const inner = map[key1];
     if (!inner) { throw new Error(`Mapping ${mapName} has no key '${key1}' (available: ${Object.keys(map)})`); }
@@ -75,7 +78,7 @@ export class StandardEvaluations implements IntrinsicsEvaluator {
   }
 
   public getAtt(logicalId: string, attr: string) {
-    const context = this.context.context.get(logicalId);
+    const context = this.sources.context.get(logicalId);
     if (!context) { throw new Error(`Fn::GetAtt: unknown identifier: ${logicalId}`); }
     const ret = context.attributes?.[attr];
     if (ret === undefined) { throw new Error(`Fn::GetAtt: ${logicalId} has no attribute ${attr}`); }
@@ -83,13 +86,13 @@ export class StandardEvaluations implements IntrinsicsEvaluator {
   }
 
   public ref(logicalId: string) {
-    const context = this.context.context.get(logicalId);
+    const context = this.sources.context.get(logicalId);
     if (!context) { throw new Error(`Ref: unknown identifier: ${logicalId}`); }
     return context.primaryValue;
   }
 
   public if_(conditionId: string, ifYes: any, ifNo: any) {
-    const condition = this.context.conditions?.[conditionId];
+    const condition = this.sources.conditions?.[conditionId];
     if (!condition) { throw new Error(`Fn::If: no such condition: ${conditionId}`); }
 
     const evaled = evalCfn(condition, this);
@@ -101,7 +104,7 @@ export class StandardEvaluations implements IntrinsicsEvaluator {
   }
 
   public importValue(exportName: string) {
-    const exp = this.context.exports?.[exportName];
+    const exp = this.sources.exports?.[exportName];
     if (exp === undefined) { throw new Error(`Fn::ImportValue: no such export '${exportName}'`); }
     return exp;
   }

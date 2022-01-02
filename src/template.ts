@@ -1,18 +1,29 @@
 import { promises as fs } from 'fs';
-import { evalCfn } from "./intrinstics";
+import { Context, evalCfn } from "./intrinstics";
 import { schema } from "./schema";
-import { analyzeSubPattern, isNonLiteral } from "./sub";
+import { analyzeSubPattern, isNonLiteral } from './private/sub';
+import { DependencyGraph } from './private/toposort';
+import { Parameters } from './parameters';
 
+/**
+ * A template describes the desired state of some infrastructure
+ */
 export class Template {
   public static async fromFile(fileName: string): Promise<Template> {
     return new Template(JSON.parse(await fs.readFile(fileName, { encoding: 'utf-8' })));
   }
 
+  public readonly parameters: Parameters;
+
   constructor(private readonly template: schema.Template) {
+    this.parameters = new Parameters(this.template.Parameters ?? {});
   }
 
-  public get parameters() {
-    return this.template.Parameters ?? {};
+  public resource(logicalId: string) {
+    if (!(logicalId in this.resources)) {
+      throw new Error(`No such resource: ${logicalId}`);
+    }
+    return this.resources[logicalId];
   }
 
   public get resources() {
@@ -31,8 +42,8 @@ export class Template {
     return this.template.Outputs ?? {};
   }
 
-  public get resourceDependencies(): Map<string, Set<string>>  {
-    return templateDependencies(this.resources);
+  public resourceGraph(): DependencyGraph<schema.Resource>  {
+    return new DependencyGraph(this.resources, templateDependencies(this.resources));
   }
 }
 

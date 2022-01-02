@@ -1,18 +1,61 @@
+export class DependencyGraph<A> {
+  public readonly keys = new Set(Object.keys(this.nodes));
+
+  constructor(private readonly nodes: Record<string, A>, private readonly _dependencies: Map<string, Set<string>>) {
+    // Restrict dependencies to only keys in nodes
+    for (const [name, deps] of this._dependencies.entries()) {
+      this._dependencies.set(name, intersect(deps, this.keys));
+    }
+  }
+
+  public get(key: string): A {
+    const ret = this.nodes[key];
+    if (ret === undefined) {
+      throw new Error(`No such key: ${key}`);
+    }
+    return ret;
+  }
+
+  public topoQueue(): TopoQueue<A> {
+    return new TopoQueue(this);
+  }
+
+  public hasDependencies(key: string) {
+    return !!this._dependencies.get(key)?.size;
+  }
+
+  public removeNode(key: string) {
+    delete this.nodes[key];
+    this._dependencies.delete(key);
+    for (const sets of this._dependencies.values()) {
+      sets.delete(key);
+    }
+  }
+
+  public copy() {
+    return new DependencyGraph(this.nodes,
+      new Map(Array.from(this._dependencies.entries()).map(([k, v]) =>
+        [k, new Set(v)] as const)));
+  }
+
+  public get dependencies(): ReadonlyMap<string, ReadonlySet<string>> {
+    return this._dependencies;
+  }
+}
+
 /**
  * A queue that will deliver its values in topologically sorted order
  */
 export class TopoQueue<A> {
   private readonly blocked: Set<string>;
-  private available = new Array<string>();
+  private readonly available = new Array<string>();
+  private readonly originalGraph: DependencyGraph<A>;
+  private readonly currentGraph: DependencyGraph<A>;
 
-  constructor(private readonly nodes: Record<string, A>, private readonly dependencies: Map<string, Set<string>>) {
-    const nodeKeys = new Set(Object.keys(nodes));
-    this.blocked = new Set(Object.keys(nodes));
-
-    // Restrict dependencies to only keys in nodes
-    for (const [name, deps] of this.dependencies.entries()) {
-      this.dependencies.set(name, intersect(deps, nodeKeys));
-    }
+  constructor(private readonly graph: DependencyGraph<A>) {
+    this.originalGraph = graph;
+    this.currentGraph = graph.copy();
+    this.blocked = new Set(graph.keys);
     this.determineAvailable();
   }
 
@@ -28,7 +71,7 @@ export class TopoQueue<A> {
 
     return {
       identifier,
-      element: this.nodes[identifier]!,
+      element: this.originalGraph.get(identifier),
       remove: () => {
         this.advance(identifier);
       },
@@ -43,7 +86,7 @@ export class TopoQueue<A> {
   }
 
   public peek(): PeekElements<A> {
-    const elements = this.available.map((key) => [key, this.nodes[key]!] as const);
+    const elements = this.available.map((key) => [key, this.originalGraph.get(key)] as const);
     return {
       elements,
       skip: () => {
@@ -56,15 +99,13 @@ export class TopoQueue<A> {
   }
 
   private advance(key: string) {
-    for (const depSet of this.dependencies.values()) {
-      depSet.delete(key);
-    }
+    this.currentGraph.removeNode(key);
     this.determineAvailable();
   }
 
   private determineAvailable() {
     const avail = Array.from(this.blocked)
-      .filter(key => !this.dependencies.get(key)?.size);
+      .filter(key => !this.originalGraph.hasDependencies(key));
 
     for (const x of avail) {
       this.blocked.delete(x);
@@ -72,7 +113,7 @@ export class TopoQueue<A> {
     this.available.push(...avail);
 
     if (this.blocked.size > 0 && this.available.length === 0) {
-      const cycle = findCycle(this.dependencies);
+      const cycle = findCycle(this.currentGraph.dependencies);
       throw new Error(`Dependency cycle in graph: ${cycle.join(' => ')}`);
     }
   }
@@ -96,7 +137,7 @@ export interface PeekElements<A> {
  *
  * Not the fastest, but effective and should be rare
  */
-function findCycle(deps: Map<string, Set<string>>): string[] {
+function findCycle(deps: ReadonlyMap<string, ReadonlySet<string>>): string[] {
   for (const node of deps.keys()) {
     const cycle = recurse(node, [node]);
     if (cycle) { return cycle; }
