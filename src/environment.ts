@@ -1,4 +1,4 @@
-import { Context } from './intrinstics';
+import { Context } from './intrinsics';
 
 export interface EnvironmentOptions {
   readonly region?: string;

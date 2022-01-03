@@ -1,7 +1,6 @@
-import { env } from 'process';
 import { Deployment, ResourceDeletion, ResourceDeployment, ResourceDeploymentResult, ResourceUpdate } from './deployment';
 import { Environment } from './environment';
-import { Context, IntrinsicsEvaluator, StandardEvaluator } from './intrinstics';
+import { Context } from './intrinsics';
 import { Stack } from './stack';
 import { Template } from './template';
 

@@ -1,5 +1,4 @@
 import { Environment } from './environment';
-import { Context, evalCfn, IntrinsicsEvaluator, NO_VALUE, StandardEvaluator } from './intrinstics';
 import { schema } from './schema';
 import { Stack } from './stack';
 import { Template } from './template';
@@ -43,7 +42,7 @@ export class Deployment {
       queue.withNext((logicalId, _resource) => {
         const resource = this.stack.evaluatedResource(logicalId);
 
-        if (resource.Condition && !resource.Condition) {
+        if (resource.Condition && !this.stack.evaluateCondition(resource.Condition)) {
           // Skip
           return;
         }

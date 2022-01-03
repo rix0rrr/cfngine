@@ -33,7 +33,7 @@ export class DependencyGraph<A> {
   }
 
   public copy() {
-    return new DependencyGraph(this.nodes,
+    return new DependencyGraph({ ...this.nodes },
       new Map(Array.from(this._dependencies.entries()).map(([k, v]) =>
         [k, new Set(v)] as const)));
   }

@@ -1,4 +1,4 @@
-import { Context, ContextValue } from './intrinstics';
+import { Context, ContextValue } from './intrinsics';
 import { schema } from './schema';
 
 export class Parameters {

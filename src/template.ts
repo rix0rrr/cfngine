@@ -1,5 +1,5 @@
 import { promises as fs } from 'fs';
-import { Context, evalCfn } from "./intrinstics";
+import { Context, evalCfn } from "./intrinsics";
 import { schema } from "./schema";
 import { analyzeSubPattern, isNonLiteral } from './private/sub';
 import { DependencyGraph } from './private/toposort';
@@ -23,7 +23,7 @@ export class Template {
     if (!(logicalId in this.resources)) {
       throw new Error(`No such resource: ${logicalId}`);
     }
-    return this.resources[logicalId];
+    return this.resources[logicalId]!;
   }
 
   public get resources() {
@@ -32,6 +32,14 @@ export class Template {
 
   public get conditions() {
     return this.template.Conditions ?? {};
+  }
+
+  public condition(logicalId: string) {
+    const condition = this.conditions[logicalId];
+    if (!condition) {
+      throw new Error(`No such Condition: ${logicalId}`);
+    }
+    return condition;
   }
 
   public get mappings() {
@@ -80,7 +88,10 @@ function templateDependencies(resources: Record<string, schema.Resource>): Map<s
           record(id, x.logicalId);
         }
         return '';
-      }
+      },
+      equals() { return false; },
+      and() { return false; },
+      or() { return false; },
     });
   }
 

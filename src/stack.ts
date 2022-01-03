@@ -1,6 +1,5 @@
-import { countReset } from 'console';
 import { Environment } from './environment';
-import { ContextRecord, ContextValue, NO_VALUE, StandardEvaluator } from './intrinstics';
+import { ContextRecord, ContextValue, NO_VALUE, StandardEvaluator } from './intrinsics';
 import { Template } from './template';
 
 export interface StackOptions {
@@ -41,7 +40,19 @@ export class Stack {
   }
 
   public evaluatedResource(logicalId: string) {
-    return this.evaluate(this.template.resource(logicalId));
+    const resource = this.template.resource(logicalId);
+    return {
+      ...resource,
+      Properties: this.evaluate(resource.Properties)
+    };
+  }
+
+  public evaluateCondition(conditionId: string) {
+    const result = this.evaluate(this.template.condition(conditionId));
+    if (typeof result !== 'boolean') {
+      throw new Error(`Condition does not evaluate to boolean: ${JSON.stringify(result)}`);
+    }
+    return result;
   }
 
   public addResource(logicalId: string, physicalId: string, attributes?: Record<string, string>) {

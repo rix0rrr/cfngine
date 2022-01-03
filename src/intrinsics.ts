@@ -27,6 +27,9 @@ export interface IntrinsicsEvaluator {
   split(delimiter: string, x: string): string[];
   ref(logicalId: string): any;
   sub(x: string, additionalContext?: Record<string, ContextValue>): string;
+  equals(a: string, b: string): boolean;
+  and(...xs: unknown[]): boolean;
+  or(...xs: unknown[]): boolean;
 }
 
 export interface EvaluationSources {
@@ -139,6 +142,26 @@ export class StandardEvaluator implements IntrinsicsEvaluator {
       }
     }).join('');
   }
+
+  public equals(a: string, b: string): boolean {
+    return a === b;
+  }
+
+  public and(...xs: unknown[]): boolean {
+    const bs = xs.filter(isBoolean);
+    if (bs.length !== xs.length) {
+      throw new Error(`Fn::And: not all arguments are booleans: ${xs.filter(x => !isBoolean(x)).map(x => JSON.stringify(x))}`);
+    }
+    return bs.every(x => x);
+  }
+
+  public or(...xs: unknown[]): boolean {
+    const bs = xs.filter(isBoolean);
+    if (bs.length !== xs.length) {
+      throw new Error(`Fn::Or: not all arguments are booleans: ${xs.filter(x => !isBoolean(x)).map(x => JSON.stringify(x))}`);
+    }
+    return bs.some(x => x);
+  }
 }
 
 export function evalCfn(xs: any, walker: IntrinsicsEvaluator): any {
@@ -181,15 +204,18 @@ function evalIntrinsic(key: string, params: schema.Intrinsic, walker: Intrinsics
   evalCase('Fn::Select', x => walker.select(recurse(x[0]), recurse(x[1])));
   evalCase('Fn::Split', x => walker.split(x[0], recurse(x[1])));
   evalCase('Fn::Sub', x => typeof x === 'string' ? walker.sub(x) : walker.sub(x[0], recurse(x[1])));
+  evalCase('Fn::Equals', x => walker.equals(recurse(x[0]), recurse(x[1])));
+  evalCase('Fn::And', x => walker.and(x.map(recurse)));
+  evalCase('Fn::Or', x => walker.or(x.map(recurse)));
   evalCase('Ref', x => walker.ref(x));
 
-  return ret ?? { key: recurse((params as any)[key]) };
+  return ret ?? { [key]: recurse((params as any)[key]) };
 
   function recurse(x: any): any {
     return evalCfn(x, walker);
   }
 
-  function evalCase<A extends KeysOfUnion<schema.Intrinsic>>(k: A, handler: (x: IntrinsicParam<A>) => any) {
+  function evalCase<A extends KeysOfUnion<schema.Intrinsic | schema.Condition>>(k: A, handler: (x: IntrinsicParam<A>) => any) {
     if (key === k) {
       ret = handler((params as any)[k]);
     }
@@ -208,8 +234,14 @@ type IntrinsicParam<A extends string> =
   A extends keyof schema.FnJoin ? schema.FnJoin[A] :
   A extends keyof schema.FnNot ? schema.FnNot[A] :
   A extends keyof schema.FnOr ? schema.FnOr[A] :
+  A extends keyof schema.FnAnd ? schema.FnAnd[A] :
   A extends keyof schema.FnSelect ? schema.FnSelect[A] :
   A extends keyof schema.FnSplit ? schema.FnSplit[A] :
   A extends keyof schema.FnSub ? schema.FnSub[A] :
   A extends keyof schema.Ref ? schema.Ref[A] :
   never;
+
+
+function isBoolean(x: unknown): x is boolean {
+  return typeof x === 'boolean';
+}
