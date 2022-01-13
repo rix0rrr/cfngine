@@ -4,10 +4,15 @@ export class DependencyGraph<A> {
   constructor(private readonly nodes: Record<string, A>, private readonly _dependencies: Map<string, Set<string>>) {
     // Restrict dependencies to only keys in nodes
     for (const [name, deps] of this._dependencies.entries()) {
-      this._dependencies.set(name, intersect(deps, this.keys));
+      if (name in nodes) {
+        this._dependencies.set(name, intersect(deps, this.keys));
+      }
     }
   }
 
+  /**
+   * Return a single node in the graph
+   */
   public get(key: string): A {
     const ret = this.nodes[key];
     if (ret === undefined) {
@@ -16,14 +21,61 @@ export class DependencyGraph<A> {
     return ret;
   }
 
+  /**
+   * Return a copy of the graph, restricted to only the nodes in the list
+   */
+  public restrict(keys: string[]) {
+    const nodes = Object.fromEntries(Object.entries(this.nodes).filter(([k, _]) => keys.includes(k)));
+    return new DependencyGraph(nodes, this.copyDependencies());
+  }
+
+  /**
+   * The node is that are direct dependencies of the given node
+   */
+  public directDependencies(key: string): string[] {
+    return Array.from(this.dependencies.get(key) ?? []);
+  }
+
+  /**
+   * The node is that are direct dependents on the given node
+   */
+  public directDependents(key: string): string[] {
+    return Array.from(this.dependencies.entries())
+      .filter(([_, xs]) => xs.has(key))
+      .map(([k, _]) => k);
+  }
+
+  /**
+   * All nodes that are dependencies of this node, and this node itself
+   */
+  public upstream(key: string) {
+    this.closure(key, k => this.directDependencies(k));
+  }
+
+  /**
+   * All nodes that are dependents of this node, and this node itself
+   */
+  public downstream(key: string) {
+    return this.closure(key, k => this.directDependents(k));
+  }
+
+  /**
+   * Turn the graph into a queue that can be consumed in dependency order
+   */
   public topoQueue(): TopoQueue<A> {
     return new TopoQueue(this);
   }
 
+  /**
+   * Whether the given node has dependencies
+   */
   public hasDependencies(key: string) {
     return !!this._dependencies.get(key)?.size;
   }
 
+  /**
+   * Remove a node from the graph
+   */
   public removeNode(key: string) {
     delete this.nodes[key];
     this._dependencies.delete(key);
@@ -32,14 +84,48 @@ export class DependencyGraph<A> {
     }
   }
 
-  public copy() {
-    return new DependencyGraph({ ...this.nodes },
-      new Map(Array.from(this._dependencies.entries()).map(([k, v]) =>
-        [k, new Set(v)] as const)));
+  /**
+   * Merge two graphs, return a new graph
+   */
+  public merge<B>(other: DependencyGraph<B>): DependencyGraph<A | B> {
+    const nodes = { ...this.nodes, ...other.nodes };
+    const deps = this.copyDependencies();
+    for (const [k, xs] of other.copyDependencies().entries()) {
+      deps.set(k, new Set(Array.from(deps.get(k) ?? []).concat(Array.from(xs))));
+    }
+    return new DependencyGraph(nodes, deps);
   }
 
+  /**
+   * Return a copy of the graph
+   */
+  public copy() {
+    return new DependencyGraph({ ...this.nodes }, this.copyDependencies());
+  }
+
+  /**
+   * Access the dependency map
+   */
   public get dependencies(): ReadonlyMap<string, ReadonlySet<string>> {
     return this._dependencies;
+  }
+
+  private copyDependencies() {
+    return new Map(Array.from(this._dependencies.entries()).map(([k, v]) =>
+      [k, new Set(v)] as const));
+  }
+
+  private closure(startingKey: string, mapping: (key: string) => string[]) {
+    const found = new Set<string>();
+    const queue = [startingKey];
+    while (queue.length > 0) {
+      const next = queue.shift()!;
+      if (found.has(next)) { continue; }
+
+      found.add(next);
+      queue.push(...mapping(next));
+    }
+    return this.restrict(Array.from(found));
   }
 }
 

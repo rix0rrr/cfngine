@@ -1,16 +1,19 @@
+import * as yaml from 'yaml';
 import { promises as fs } from 'fs';
-import { Context, evalCfn } from "./intrinsics";
+import { evalCfn } from "./intrinsics";
 import { schema } from "./schema";
 import { analyzeSubPattern, isNonLiteral } from './private/sub';
 import { DependencyGraph } from './private/toposort';
 import { Parameters } from './parameters';
+import { parseCfnYaml } from './private/cfn-yaml';
 
 /**
  * A template describes the desired state of some infrastructure
  */
 export class Template {
   public static async fromFile(fileName: string): Promise<Template> {
-    return new Template(JSON.parse(await fs.readFile(fileName, { encoding: 'utf-8' })));
+    const tpl = parseCfnYaml(await fs.readFile(fileName, { encoding: 'utf-8' }));
+    return new Template(tpl);
   }
 
   public readonly parameters: Parameters;
@@ -50,18 +53,36 @@ export class Template {
     return this.template.Outputs ?? {};
   }
 
+  /**
+   * Return a graph containing all dependencies in execution order
+   *
+   * This includes relations established both by property references, as
+   * well as 'DependsOn' declarations.
+   */
   public resourceGraph(): DependencyGraph<schema.Resource>  {
-    return new DependencyGraph(this.resources, templateDependencies(this.resources));
+    return new DependencyGraph(this.resources, templateDependencies(this.resources, true));
+  }
+
+  /**
+   * Return a graph containing all references established by properties
+   *
+   * This does not include relations established by 'DependsOn' declarations.
+   */
+  public referenceGraph(): DependencyGraph<schema.Resource>  {
+    return new DependencyGraph(this.resources, templateDependencies(this.resources, false));
   }
 }
 
-function templateDependencies(resources: Record<string, schema.Resource>): Map<string, Set<string>> {
+function templateDependencies(resources: Record<string, schema.Resource>, includeDependsOn: boolean): Map<string, Set<string>> {
   const ret = new Map<string, Set<string>>();
 
   for (const [id, resource] of Object.entries(resources)) {
-    for (const dependsOn of makeList(resource?.DependsOn ?? [])) {
-      record(id, dependsOn);
+    if (includeDependsOn) {
+      for (const dependsOn of makeList(resource?.DependsOn ?? [])) {
+        record(id, dependsOn);
+      }
     }
+
     evalCfn(resource, {
       base64() { return ''; },
       cidr() { return ''; },

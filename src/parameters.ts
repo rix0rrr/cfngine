@@ -5,6 +5,12 @@ export class Parameters {
   constructor(private readonly parameters: Record<string, schema.Parameter>) {
   }
 
+  public get required(): Record<string, schema.Parameter> {
+    return Object.fromEntries(Object.entries(this.parameters).filter(
+      ([_, param]) => param.Default == null,
+    ));
+  }
+
   public has(name: string) {
     return !!this.parameters[name];
   }

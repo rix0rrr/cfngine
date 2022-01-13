@@ -2,6 +2,9 @@ import { Deployment } from './deployment';
 import { Template } from './template';
 import { proxiedGetter } from './private/everything-obj';
 import { Environment } from './environment';
+import { schema } from '.';
+import stringify from 'json-stringify-pretty-compact';
+
 
 
 async function main() {
@@ -10,12 +13,17 @@ async function main() {
   for (const file of files) {
     console.log(file);
     const template = await Template.fromFile(file);
+
+    const parameterValues = Object.fromEntries(Object.entries(template.parameters.required).map(([name, param]) =>
+      [name, fakeParameterValue(name, param)]));
+
     const deployment = new Deployment(template, {
       environment: Environment.from({ region: 'sa-east-1' }),
+      parameterValues,
     });
     deployment.forEach(d => {
       console.log('===========', d.logicalId, '==============');
-      console.log(JSON.stringify(d.resource, undefined, 2).split('\n').map(x => `    ${x}`).join('\n'));
+      console.log(stringify(d.resource, { indent: 2 }).split('\n').map(x => `    ${x}`).join('\n'));
       const physicalId = `physical-${d.logicalId}`;
       return { physicalId, attributes: proxiedGetter(attr => `${physicalId}#${attr}`) };
     });
@@ -24,6 +32,13 @@ async function main() {
       console.log(`   ${name} = ${value}`);
     }
   }
+}
+
+function fakeParameterValue(name: string, param: schema.Parameter): string {
+  if (param.Type === 'Number' || param.Type === 'List<Number>') {
+    return `${param.MinValue ?? 1}`;
+  }
+  return name;
 }
 
 main().catch(e => {
