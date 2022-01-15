@@ -17,6 +17,30 @@ export namespace schema {
     readonly Properties?: Record<string, CfnValue<any>>;
     readonly Condition?: string;
     readonly DependsOn?: string;
+    readonly DeletionPolicy?: 'Retain' | 'Delete' | 'Snapshot';
+    readonly UpdateReplacePolicy?: 'Retain' | 'Delete' | 'Snapshot';
+    readonly Metadata?: Record<string, any>;
+    readonly CreationPolicy?: CreationPolicy;
+    readonly UpdatePolicy?: UpdatePolicy;
+  }
+
+  export interface CreationPolicy {
+    readonly AutoScalingCreationPolicy?: AutoScalingCreationPolicy;
+    readonly ResourceSignal?: ResourceSignal;
+  }
+
+  export interface UpdatePolicy {
+    // TODO
+    [key: string]: any;
+  }
+
+  export interface AutoScalingCreationPolicy {
+    readonly MinSuccessfulInstancesPercent: number;
+  }
+
+  export interface ResourceSignal {
+    readonly Count: number;
+    readonly Timeout: string;
   }
 
   export interface Parameter {

@@ -73,10 +73,10 @@ function parseParamValue(name: string, param: schema.Parameter, value: string) {
 
 function parseNumber(asString: string | number) {
   const asNumber = parseInt(`${asString}`, 10);
-  if (`${asNumber}` !== asString) {
+  if (`${asNumber}` !== `${asString}`) {
     throw new Error(`Not a number: ${asString}`);
   }
-  return { asString, asNumber };
+  return { asString: `${asNumber}`, asNumber };
 }
 
 function assertString(x: ContextValue): string {

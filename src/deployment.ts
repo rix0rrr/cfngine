@@ -83,7 +83,7 @@ export class Deployment {
     this._outputs = {};
     this._exports = {};
     for (const [name, output] of Object.entries(this.template.outputs)) {
-      if (output.Condition && !this.stack.evaluate(output.Condition)) {
+      if (output.Condition && !this.stack.evaluateCondition(output.Condition)) {
         continue;
       }
 

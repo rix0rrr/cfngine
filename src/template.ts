@@ -13,6 +13,9 @@ import { parseCfnYaml } from './private/cfn-yaml';
 export class Template {
   public static async fromFile(fileName: string): Promise<Template> {
     const tpl = parseCfnYaml(await fs.readFile(fileName, { encoding: 'utf-8' }));
+    if (!(tpl.Resources)) {
+      throw new Error(`${fileName}: does not look like a template`);
+    }
     return new Template(tpl);
   }
 

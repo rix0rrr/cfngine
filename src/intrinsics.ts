@@ -97,7 +97,7 @@ export class StandardEvaluator implements IntrinsicsEvaluator {
     return context.primaryValue;
   }
 
-  public if_(conditionId: string, ifYes: any, ifNo: any) {
+  public if_(conditionId: string, ifYes: any, ifNo: any): any {
     const condition = this.sources.conditions?.[conditionId];
     if (!condition) { throw new Error(`Fn::If: no such condition: ${conditionId}`); }
 
@@ -106,7 +106,7 @@ export class StandardEvaluator implements IntrinsicsEvaluator {
       throw new Error(`Fn::If: condition ${conditionId} must evaluate to boolean, got '${JSON.stringify(evaled)}'`);
     }
 
-    return evaled ? ifYes : ifNo;
+    return evaled ? this.evaluate(ifYes) : this.evaluate(ifNo);
   }
 
   public importValue(exportName: string) {
@@ -121,7 +121,7 @@ export class StandardEvaluator implements IntrinsicsEvaluator {
 
   public select(index: number, elements: string[]): string {
     if (index < 0 || elements.length <= index) {
-      throw new Error(`Fn::Select: index ${index} of out range: [0..${elements.length})`);
+      throw new Error(`Fn::Select: index ${index} of out range: [0..${elements.length - 1}]`);
     }
     return elements[index]!;
   }
@@ -198,7 +198,7 @@ function evalIntrinsic(key: string, params: schema.Intrinsic, walker: Intrinsics
   evalCase('Fn::FindInMap', x => walker.findInMap(recurse(x[0]), recurse(x[1]), recurse(x[2])));
   evalCase('Fn::GetAZs', x => walker.getAzs(recurse(x)));
   evalCase('Fn::GetAtt', x => walker.getAtt(x[0], recurse(x[1])));
-  evalCase('Fn::If', x => walker.if_(x[0], recurse(x[1]), recurse(x[2])));
+  evalCase('Fn::If', x => walker.if_(x[0], x[1], x[2]));
   evalCase('Fn::ImportValue', x => walker.importValue(recurse(x)));
   evalCase('Fn::Join', x => walker.join(x[0], recurse(x[1])));
   evalCase('Fn::Select', x => walker.select(recurse(x[0]), recurse(x[1])));

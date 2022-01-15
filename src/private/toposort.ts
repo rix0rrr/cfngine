@@ -191,7 +191,7 @@ export class TopoQueue<A> {
 
   private determineAvailable() {
     const avail = Array.from(this.blocked)
-      .filter(key => !this.originalGraph.hasDependencies(key));
+      .filter(key => !this.currentGraph.hasDependencies(key));
 
     for (const x of avail) {
       this.blocked.delete(x);

@@ -60,6 +60,8 @@ describe('template with Condition', () => {
   });
 });
 
+test.todo('Output conditions are respected');
+
 function mockHandler() {
   return jest.fn((d: ResourceDeployment) => {
     return {

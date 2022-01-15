@@ -4,7 +4,7 @@ export function analyzeSubPattern(pattern: string): SubFragment[] {
 
   let ph0 = pattern.indexOf('${', start);
   while (ph0 > -1) {
-    if (pattern.at(ph0 + 2) === '!') {
+    if (pattern[ph0 + 2] === '!') {
       // "${!" means "don't actually substitute"
       start = ph0 + 3;
       continue;
@@ -24,6 +24,7 @@ export function analyzeSubPattern(pattern: string): SubFragment[] {
     }
 
     start = ph1 + 1;
+    ph0 = pattern.indexOf('${', start);
   }
 
   if (start < pattern.length - 1) {

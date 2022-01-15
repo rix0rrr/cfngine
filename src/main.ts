@@ -12,7 +12,13 @@ async function main() {
 
   for (const file of files) {
     console.log(file);
-    const template = await Template.fromFile(file);
+    let template;
+    try {
+      template = await Template.fromFile(file);
+    } catch(e) {
+      console.error(e);
+      continue;
+    }
 
     const parameterValues = Object.fromEntries(Object.entries(template.parameters.required).map(([name, param]) =>
       [name, fakeParameterValue(name, param)]));
@@ -37,6 +43,12 @@ async function main() {
 function fakeParameterValue(name: string, param: schema.Parameter): string {
   if (param.Type === 'Number' || param.Type === 'List<Number>') {
     return `${param.MinValue ?? 1}`;
+  }
+  if (param.AllowedValues) {
+    return param.AllowedValues[0];
+  }
+  if (param.Type === 'CommaDelimitedList') {
+    return `${name}1,${name}2,${name}3,${name}4`;
   }
   return name;
 }
