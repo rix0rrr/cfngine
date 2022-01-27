@@ -44,7 +44,7 @@ export namespace schema {
   }
 
   export interface Parameter {
-    readonly Type: 'String' | 'Number' | 'List<Number>' | 'CommaDelimitedList';
+    readonly Type: string;
     readonly Description?: string;
     readonly Default?: any;
     readonly AllowedValues?: any[];
@@ -55,7 +55,6 @@ export namespace schema {
     readonly MinValue?: number;
     readonly MaxValue?: number;
     readonly NoEcho?: boolean;
-
   }
 
   export interface Rule {
@@ -115,4 +114,5 @@ export namespace schema {
   export type FnOr = { 'Fn::Or': Condition[] };
   export type FnNot = { 'Fn::Not': [Condition] };
   export type FnEquals = { 'Fn::Equals': [ConditionValue<string>, ConditionValue<string>] };
+
 }

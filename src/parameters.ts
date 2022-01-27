@@ -1,4 +1,5 @@
 import { Context, ContextValue } from './intrinsics';
+import { parseNumber } from './private/types';
 import { schema } from './schema';
 
 export class Parameters {
@@ -42,20 +43,17 @@ export class Parameters {
 
 
 function parseParamValue(name: string, param: schema.Parameter, value: string) {
+  const ptype = parseParameterType(param.Type);
+
+  if (ptype.source === 'ssm') {
+    throw new Error('SSM parameter values not yet supported');
+  }
+
   let ret: ContextValue;
-  switch (param.Type) {
-    case 'String':
-      ret = value;
-      break;
-    case 'Number':
-      ret = parseNumber(value).asString;
-      break;
-    case 'CommaDelimitedList':
-      ret = value.split(',');
-      break;
-    case 'List<Number>':
-      ret = value.split(',').map(x => parseNumber(x).asString);
-      break;
+  if (ptype.type === 'list') {
+    ret = value.split(',').map(x => parseScalar(x, ptype.elementType));
+  } else {
+    ret = parseScalar(value, ptype);
   }
 
   if (param.AllowedValues && !param.AllowedValues.includes(assertString(ret))) {
@@ -69,14 +67,15 @@ function parseParamValue(name: string, param: schema.Parameter, value: string) {
   // FIXME: More validations here
 
   return ret;
-}
 
-function parseNumber(asString: string | number) {
-  const asNumber = parseInt(`${asString}`, 10);
-  if (`${asNumber}` !== `${asString}`) {
-    throw new Error(`Not a number: ${asString}`);
+  function parseScalar(value: string, type: ScalarParameterType) {
+    switch (type.type) {
+      case 'number':
+        return parseNumber(value).asString;
+      case 'string':
+        return value;
+    }
   }
-  return { asString: `${asNumber}`, asNumber };
 }
 
 function assertString(x: ContextValue): string {
@@ -85,3 +84,68 @@ function assertString(x: ContextValue): string {
   }
   return x;
 }
+
+function parseParameterType(specifier: string): ParameterType {
+  let source: ParameterSource = { source: 'direct' };
+  const m = specifier.match(/^AWS::SSM::Parameter::Value<(.*)>$/);
+  if (m) {
+    source = { source: 'ssm' };
+    specifier = m[1];
+  }
+
+  if (specifier === 'CommaDelimitedList') {
+    specifier = 'List<String>';
+  }
+
+  let isList = false;
+  const mm = specifier.match(/^List<(.*)>$/);
+  if (mm) {
+    isList = true;
+    specifier = mm[1];
+  }
+
+  let type: ScalarParameterType;
+  switch (specifier) {
+    case 'String':
+      type = { type: 'string' };
+      break;
+    case 'Number':
+      type = { type: 'number' };
+      break;
+    default:
+      type = { type: 'string', resourceIdentifier: specifier as ResourceIdentifier };
+      break;
+  }
+
+  return {
+    ...source,
+    ...isList ? { type: 'list', elementType: type } : type,
+  };
+}
+
+export type ParameterType =
+  & (ScalarParameterType | { readonly type: 'list', readonly elementType: ScalarParameterType })
+  & ParameterSource
+  ;
+
+export type ParameterSource =
+  | { readonly source: 'direct' }
+  | { readonly source: 'ssm' };
+
+export type ScalarParameterType =
+  | { readonly type: 'string' }
+  | { readonly type: 'number' }
+  | { readonly type: 'string', readonly resourceIdentifier: ResourceIdentifier };
+
+export type ResourceIdentifier =
+    | 'AWS::EC2::AvailabilityZone::Name'
+    | 'AWS::EC2::Image::Id'
+    | 'AWS::EC2::Instance::Id'
+    | 'AWS::EC2::KeyPair::KeyName'
+    | 'AWS::EC2::SecurityGroup::GroupName'
+    | 'AWS::EC2::SecurityGroup::Id'
+    | 'AWS::EC2::Subnet::Id'
+    | 'AWS::EC2::Volume::Id'
+    | 'AWS::EC2::VPC::Id'
+    | 'AWS::Route53::HostedZone::Id'
+    | 'AWS::SSM::Parameter::Name';

@@ -2,6 +2,7 @@ import { schema } from './schema';
 import { analyzeSubPattern } from './private/sub';
 import { Template } from './template';
 import { mkDict } from './private/util';
+import { assertList, assertNumber } from './private/types';
 
 export const NO_VALUE = Symbol('AWS::NoValue');
 
@@ -97,7 +98,7 @@ export class StandardEvaluator implements IntrinsicsEvaluator {
     return context.primaryValue;
   }
 
-  public if_(conditionId: string, ifYes: any, ifNo: any): any {
+  public if_(conditionId: string, ifYes: () => any, ifNo: () => any): () => any {
     const condition = this.sources.conditions?.[conditionId];
     if (!condition) { throw new Error(`Fn::If: no such condition: ${conditionId}`); }
 
@@ -106,7 +107,7 @@ export class StandardEvaluator implements IntrinsicsEvaluator {
       throw new Error(`Fn::If: condition ${conditionId} must evaluate to boolean, got '${JSON.stringify(evaled)}'`);
     }
 
-    return evaled ? this.evaluate(ifYes) : this.evaluate(ifNo);
+    return evaled ? ifYes : ifNo;
   }
 
   public importValue(exportName: string) {
@@ -198,10 +199,12 @@ function evalIntrinsic(key: string, params: schema.Intrinsic, walker: Intrinsics
   evalCase('Fn::FindInMap', x => walker.findInMap(recurse(x[0]), recurse(x[1]), recurse(x[2])));
   evalCase('Fn::GetAZs', x => walker.getAzs(recurse(x)));
   evalCase('Fn::GetAtt', x => walker.getAtt(x[0], recurse(x[1])));
-  evalCase('Fn::If', x => walker.if_(x[0], x[1], x[2]));
+  evalCase('Fn::If', x => walker.if_(x[0], () => recurse(x[1]), () => recurse(x[2]))());
   evalCase('Fn::ImportValue', x => walker.importValue(recurse(x)));
   evalCase('Fn::Join', x => walker.join(x[0], recurse(x[1])));
-  evalCase('Fn::Select', x => walker.select(recurse(x[0]), recurse(x[1])));
+  evalCase('Fn::Select', x => walker.select(
+    assertNumber(recurse(x[0])),
+    assertList(recurse(x[1]))));
   evalCase('Fn::Split', x => walker.split(x[0], recurse(x[1])));
   evalCase('Fn::Sub', x => typeof x === 'string' ? walker.sub(x) : walker.sub(x[0], recurse(x[1])));
   evalCase('Fn::Equals', x => walker.equals(recurse(x[0]), recurse(x[1])));
