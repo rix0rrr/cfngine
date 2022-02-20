@@ -1,3 +1,8 @@
-test.todo('Fn::Select can work on non-list values');
+import { makeContext, StandardEvaluator } from "../../src";
 
-test.todo('Fn::Select can be passed a stringified index');
+test('Fn::Select can be passed a stringified index', () => {
+  const evaluator = StandardEvaluator.fromSources({ context: makeContext({}) });
+
+  // THEN - should not explode because the { Ref } is never evaluated
+  expect(evaluator.evaluate({ 'Fn::Select': ['1', ['a', 'b', 'c']]})).toEqual('b');
+});

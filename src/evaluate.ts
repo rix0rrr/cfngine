@@ -2,11 +2,7 @@ import { schema } from './schema';
 import { analyzeSubPattern } from './private/sub';
 import { Template } from './template';
 import { mkDict } from './private/util';
-import { assertList, assertNumber } from './private/types';
-
-export const NO_VALUE = Symbol('AWS::NoValue');
-
-export type ContextValue = string | string[] | symbol;
+import { assertBoolean, assertNumber, assertString } from './private/types';
 
 export interface ContextRecord {
   readonly primaryValue: ContextValue;
@@ -15,49 +11,125 @@ export interface ContextRecord {
 
 export type Context = Map<string, ContextRecord>;
 
+export const NO_VALUE = Symbol('AWS::NoValue');
+
+export type ContextValue = string | string[] | symbol;
+
+export type Thunk<A> = () => A;
+
 export interface IntrinsicsEvaluator {
   base64(x: string): string;
   cidr(base: string, a: number, b: number): string;
   findInMap(mapName: string, key1: string, key2: string): string;
   getAzs(region: string): string[];
   getAtt(logicalId: string, attr: string): any;
-  if_(conditionId: string, ifYes: any, ifNo: any): any;
+  if_<A>(conditionId: string, ifYes: A, ifNo: A): A;
   importValue(exportName: string): any;
   join(delimiter: string, elements: string[]): string;
-  select(index: number, elements: string[]): string;
+  select(index: number, elements: any[]): any;
   split(delimiter: string, x: string): string[];
   ref(logicalId: string): any;
-  sub(x: string, additionalContext?: Record<string, ContextValue>): string;
+  sub(x: string, additionalContext?: Record<string, string>): string;
   equals(a: string, b: string): boolean;
-  and(...xs: unknown[]): boolean;
-  or(...xs: unknown[]): boolean;
+  and(xs: unknown[]): boolean;
+  or(xs: unknown[]): boolean;
 }
 
-export interface EvaluationSources {
-  readonly context: Context;
-  readonly mappings?: Record<string, schema.Mapping>;
-  readonly conditions?: Record<string, schema.Condition>;
-  readonly exports?: Record<string, string>;
+export interface UncheckedEvaluator {
+  base64(x: unknown): string;
+  cidr(base: unknown, a: unknown, b: unknown): string;
+  findInMap(mapName: unknown, key1: unknown, key2: unknown): string;
+  getAzs(region: unknown): string[];
+  getAtt(logicalId: unknown, attr: unknown): any;
+  if_<A>(conditionId: unknown, ifYes: A, ifNo: A): A;
+  importValue(exportName: unknown): any;
+  join(delimiter: unknown, elements: unknown[]): string;
+  select(index: unknown, elements: unknown[]): unknown;
+  split(delimiter: unknown, x: unknown): string[];
+  ref(logicalId: unknown): any;
+  sub(x: unknown, additionalContext?: unknown): string;
+  equals(a: unknown, b: unknown): boolean;
+  and(xs: boolean[]): boolean;
+  or(xs: boolean[]): boolean;
 }
 
-export class StandardEvaluator implements IntrinsicsEvaluator {
-  public static forTemplate(template: Template, context: Context, exports: Record<string, string> = {}) {
-    return new StandardEvaluator({
-      context,
-      conditions: template.conditions,
-      mappings: template.mappings,
-      exports,
-    });
+/**
+ * Adds type checking around an evaluator
+ */
+export class TypecheckedEvaluator implements UncheckedEvaluator {
+  constructor(private readonly inner: IntrinsicsEvaluator) {
   }
 
+  base64(x: unknown): string {
+    return this.inner.base64(assertString(x));
+  }
+
+  cidr(base: unknown, a: unknown, b: unknown): string {
+    return this.inner.cidr(assertString(base), assertNumber(a), assertNumber(b));
+  }
+
+  findInMap(mapName: unknown, key1: unknown, key2: unknown): string {
+    return this.inner.findInMap(assertString(mapName), assertString(key1), assertString(key2));
+  }
+
+  getAzs(region: unknown): string[] {
+    return this.inner.getAzs(assertString(region));
+  }
+
+  getAtt(logicalId: unknown, attr: unknown) {
+    return this.inner.getAtt(assertString(logicalId), assertString(attr));
+  }
+
+  if_<A>(conditionId: unknown, ifYes: A, ifNo: A) {
+    return this.inner.if_(assertString(conditionId), ifYes, ifNo);
+  }
+
+  importValue(exportName: unknown) {
+    return this.inner.importValue(assertString(exportName));
+  }
+
+  join(delimiter: unknown, elements: unknown[]): string {
+    return this.inner.join(assertString(delimiter), elements.map(assertString));
+  }
+
+  select(index: unknown, elements: unknown[]): unknown {
+    return this.inner.select(assertNumber(index), elements);
+  }
+
+  split(delimiter: unknown, x: unknown): string[] {
+    return this.split(assertString(delimiter), assertString(x));
+  }
+
+  ref(logicalId: unknown) {
+    return this.inner.ref(assertString(logicalId));
+  }
+
+  sub(x: unknown, additionalContext?: unknown): string {
+    if (additionalContext && typeof additionalContext !== 'object') {
+      throw new Error(`Second argument to Fn::Sub should be an object, got ${JSON.stringify(additionalContext)}`);
+    }
+
+    return this.inner.sub(assertString(x), additionalContext as any);
+  }
+
+  equals(a: unknown, b: unknown): boolean {
+    return this.inner.equals(assertString(a), assertString(b));
+  }
+
+  and(xs: unknown[]): boolean {
+    return this.inner.and(xs.map(assertBoolean));
+  }
+
+  or(xs: unknown[]): boolean {
+    return this.inner.or(xs.map(assertBoolean));
+  }
+}
+
+export class StandardIntrinsics implements IntrinsicsEvaluator {
   public readonly context: Context;
 
   constructor(private readonly sources: EvaluationSources) {
     this.context = sources.context;
-  }
-
-  public evaluate(what: any) {
-    return evalCfn(what, this);
   }
 
   public base64(x: string): string {
@@ -98,7 +170,7 @@ export class StandardEvaluator implements IntrinsicsEvaluator {
     return context.primaryValue;
   }
 
-  public if_(conditionId: string, ifYes: () => any, ifNo: () => any): () => any {
+  public if_<A>(conditionId: string, ifYes: A, ifNo: A): A {
     const condition = this.sources.conditions?.[conditionId];
     if (!condition) { throw new Error(`Fn::If: no such condition: ${conditionId}`); }
 
@@ -131,7 +203,7 @@ export class StandardEvaluator implements IntrinsicsEvaluator {
     return x.split(delimiter);
   }
 
-  public sub(x: string, additionalContext: Record<string, ContextValue> = {}): string {
+  public sub(x: string, additionalContext: Record<string, string> = {}): string {
     return analyzeSubPattern(x).map((part) => {
       switch (part.type) {
         case 'literal': return part.content;
@@ -148,24 +220,55 @@ export class StandardEvaluator implements IntrinsicsEvaluator {
     return a === b;
   }
 
-  public and(...xs: unknown[]): boolean {
-    const bs = xs.filter(isBoolean);
-    if (bs.length !== xs.length) {
-      throw new Error(`Fn::And: not all arguments are booleans: ${xs.filter(x => !isBoolean(x)).map(x => JSON.stringify(x))}`);
-    }
-    return bs.every(x => x);
+  public and(xs: boolean[]): boolean {
+    return xs.every(x => x);
   }
 
-  public or(...xs: unknown[]): boolean {
-    const bs = xs.filter(isBoolean);
-    if (bs.length !== xs.length) {
-      throw new Error(`Fn::Or: not all arguments are booleans: ${xs.filter(x => !isBoolean(x)).map(x => JSON.stringify(x))}`);
-    }
-    return bs.some(x => x);
+  public or(xs: unknown[]): boolean {
+    return xs.some(x => x);
   }
 }
 
-export function evalCfn(xs: any, walker: IntrinsicsEvaluator): any {
+export class StandardEvaluator {
+  /**
+   * Create a new StandardEvaluator with typechecking
+   */
+  public static forTemplate(template: Template, context: Context, exports: Record<string, string> = {}) {
+    return new StandardEvaluator(new TypecheckedEvaluator(new StandardIntrinsics({
+      context,
+      conditions: template.conditions,
+      mappings: template.mappings,
+      exports,
+    })), context);
+  }
+
+  public static fromSources(sources: EvaluationSources) {
+    return new StandardEvaluator(new TypecheckedEvaluator(new StandardIntrinsics(sources)), sources.context);
+  }
+
+  constructor(private readonly evaluator: UncheckedEvaluator, public readonly context: Context) {
+  }
+
+  public evaluate(what: any) {
+    return evalCfn(what, this.evaluator);
+  }
+}
+
+/**
+ * Make trivial context (no attributes)
+ */
+export function makeContext(kv: Record<string, ContextValue>) {
+  return new Map(Object.entries(kv).map(([key, primaryValue]) => [key, { primaryValue }]))
+}
+
+export interface EvaluationSources {
+  readonly context: Context;
+  readonly mappings?: Record<string, schema.Mapping>;
+  readonly conditions?: Record<string, schema.Condition>;
+  readonly exports?: Record<string, string>;
+}
+
+export function evalCfn(xs: any, walker: UncheckedEvaluator): any {
   if (!xs) { return xs; }
 
   if (Array.isArray(xs)) {
@@ -190,10 +293,9 @@ export function evalCfn(xs: any, walker: IntrinsicsEvaluator): any {
 
 type KeysOfUnion<T> = T extends T ? keyof T : never;
 
-function evalIntrinsic(key: string, params: schema.Intrinsic, walker: IntrinsicsEvaluator): any | undefined {
+function evalIntrinsic(key: string, intrins: schema.Intrinsic, walker: IntrinsicsEvaluator): any | undefined {
   let ret: any = undefined;
 
-  // FIXME: should validate types here as well
   evalCase('Fn::Base64', x => walker.base64(recurse(x)));
   evalCase('Fn::Cidr', x => walker.cidr(recurse(x[0]), x[1], x[2]));
   evalCase('Fn::FindInMap', x => walker.findInMap(recurse(x[0]), recurse(x[1]), recurse(x[2])));
@@ -202,9 +304,7 @@ function evalIntrinsic(key: string, params: schema.Intrinsic, walker: Intrinsics
   evalCase('Fn::If', x => walker.if_(x[0], () => recurse(x[1]), () => recurse(x[2]))());
   evalCase('Fn::ImportValue', x => walker.importValue(recurse(x)));
   evalCase('Fn::Join', x => walker.join(x[0], recurse(x[1])));
-  evalCase('Fn::Select', x => walker.select(
-    assertNumber(recurse(x[0])),
-    assertList(recurse(x[1]))));
+  evalCase('Fn::Select', x => walker.select(recurse(x[0]), recurse(x[1])));
   evalCase('Fn::Split', x => walker.split(x[0], recurse(x[1])));
   evalCase('Fn::Sub', x => typeof x === 'string' ? walker.sub(x) : walker.sub(x[0], recurse(x[1])));
   evalCase('Fn::Equals', x => walker.equals(recurse(x[0]), recurse(x[1])));
@@ -212,15 +312,15 @@ function evalIntrinsic(key: string, params: schema.Intrinsic, walker: Intrinsics
   evalCase('Fn::Or', x => walker.or(x.map(recurse)));
   evalCase('Ref', x => walker.ref(x));
 
-  return ret ?? { [key]: recurse((params as any)[key]) };
+  return ret ?? { [key]: recurse((intrins as any)[key]) };
 
   function recurse(x: any): any {
     return evalCfn(x, walker);
   }
 
   function evalCase<A extends KeysOfUnion<schema.Intrinsic | schema.Condition>>(k: A, handler: (x: IntrinsicParam<A>) => any) {
-    if (key === k) {
-      ret = handler((params as any)[k]);
+    if (ret === undefined && key === k) {
+      ret = handler((intrins as any)[k]);
     }
   }
 }
@@ -243,8 +343,3 @@ type IntrinsicParam<A extends string> =
   A extends keyof schema.FnSub ? schema.FnSub[A] :
   A extends keyof schema.Ref ? schema.Ref[A] :
   never;
-
-
-function isBoolean(x: unknown): x is boolean {
-  return typeof x === 'boolean';
-}

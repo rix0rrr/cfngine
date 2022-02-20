@@ -6,6 +6,12 @@ export function parseNumber(asString: string | number) {
   return { asString: `${asNumber}`, asNumber };
 }
 
+export function assertString(x: unknown): string {
+  if (typeof x === 'number') { return `${x}`; }
+  if (typeof x === 'string') { return x; }
+  throw new Error(`Expected string, got: ${JSON.stringify(x)}`);
+}
+
 export function assertNumber(x: unknown): number {
   if (typeof x === 'number') { return x; }
   if (typeof x === 'string') {
@@ -19,4 +25,11 @@ export function assertList(x: unknown): string[] {
     throw new Error(`Expected list, got: ${JSON.stringify(x)}`);
   }
   return x.map(y => `${y}`);
+}
+
+export function assertBoolean(x: unknown): boolean {
+  if (typeof x !== 'boolean') {
+    throw new Error(`Expected boolean, got: ${JSON.stringify(x)}`);
+  }
+  return x;
 }

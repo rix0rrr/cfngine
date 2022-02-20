@@ -1,5 +1,5 @@
 import { Environment } from './environment';
-import { ContextRecord, ContextValue, NO_VALUE, StandardEvaluator } from './intrinsics';
+import { ContextRecord, NO_VALUE, StandardEvaluator } from './evaluate';
 import { Template } from './template';
 
 export interface StackOptions {

@@ -1,0 +1,9 @@
+Parameters:
+  Param:
+    Type: CommaDelimitedList
+Outputs:
+  Output:
+    Value: { Fn::Select: [0, { Ref: 'Param' }] }
+Resources:
+  Handle:
+    Type: AWS::CloudFormation::WaitConditionHandle

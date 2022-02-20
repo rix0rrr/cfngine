@@ -1,11 +1,11 @@
-import * as yaml from 'yaml';
 import { promises as fs } from 'fs';
-import { evalCfn } from "./intrinsics";
-import { schema } from "./schema";
+import { evalCfn } from './evaluate';
+import { schema } from './schema';
 import { analyzeSubPattern, isNonLiteral } from './private/sub';
 import { DependencyGraph } from './private/toposort';
 import { Parameters } from './parameters';
 import { parseCfnYaml } from './private/cfn-yaml';
+import { assertString } from './private/types';
 
 /**
  * A template describes the desired state of some infrastructure
@@ -91,23 +91,24 @@ function templateDependencies(resources: Record<string, schema.Resource>, includ
       cidr() { return ''; },
       findInMap() { return ''; },
       getAtt(logicalId) {
-        record(id, logicalId);
+        record(id, assertString(logicalId));
         return '';
       },
       getAzs() { return []; },
-      if_() { return ''; },
+      if_(_, b) { return b; },
       importValue() { return ''; },
       join() { return ''; },
       ref(logicalId) {
-        if (!logicalId.startsWith('AWS::')) {
-          record(id, logicalId);
+        const l = assertString(logicalId);
+        if (!l.startsWith('AWS::')) {
+          record(id, l);
         }
         return '';
       },
       select() { return ''; },
       split() { return []; },
       sub(pattern) {
-        const pat = analyzeSubPattern(pattern);
+        const pat = analyzeSubPattern(assertString(pattern));
         for (const x of pat.filter(isNonLiteral)) {
           record(id, x.logicalId);
         }

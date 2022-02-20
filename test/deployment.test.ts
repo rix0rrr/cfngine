@@ -60,7 +60,44 @@ describe('template with Condition', () => {
   });
 });
 
-test.todo('Output conditions are respected');
+describe('Output with condition', () => {
+  const template = new Template({
+    Parameters: {
+      DoIt: { Type: 'String' },
+    },
+    Conditions: {
+      Maybe: { 'Fn::Equals': [ { Ref: 'DoIt' }, 'Yes' ] },
+    },
+    Resources: {
+      SomeResource: {
+        Type: 'Some::Resource',
+        Condition: 'Maybe',
+      },
+    },
+    Outputs: {
+      SomeResourceId: {
+        Condition: 'Maybe',
+        Value: { Ref: 'SomeResource' }
+      },
+    },
+  });
+
+  describe.each([
+    ['Yes', ['SomeResourceId']],
+    ['No', []],
+  ])('if param is %p', (doIt, outputs) => {
+    // GIVEN
+    const deployment = new Deployment(template, {
+      parameterValues: { DoIt: doIt },
+    });
+
+    // WHEN
+    deployment.forEach(mockHandler());
+
+    // THEN
+    expect(Object.keys(deployment.outputs)).toEqual(outputs);
+  });
+});
 
 function mockHandler() {
   return jest.fn((d: ResourceDeployment) => {

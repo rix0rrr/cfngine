@@ -1,7 +1,7 @@
 import { ContextRecord, StandardEvaluator } from "../../src";
 
 test('Fn::If lazily evaluates arguments', () => {
-  const evaluator = new StandardEvaluator({
+  const evaluator = StandardEvaluator.fromSources({
     conditions: {
       Tautology: { 'Fn::Equals': ['x', 'x'] },
     },

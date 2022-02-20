@@ -1,0 +1,9 @@
+#!/bin/bash
+set -eu
+stack=TestingStack
+file=$1
+shift
+set -x
+aws cloudformation update-stack --stack-name $stack --template-body file://$file "$@"
+aws cloudformation wait stack-update-complete --stack-name $stack
+aws cloudformation describe-stacks --stack-names $stack

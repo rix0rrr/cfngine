@@ -1,4 +1,4 @@
-import { Context, ContextValue } from './intrinsics';
+import { Context, ContextValue } from './evaluate';
 import { parseNumber } from './private/types';
 import { schema } from './schema';
 

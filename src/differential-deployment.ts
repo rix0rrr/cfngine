@@ -1,6 +1,6 @@
 import { Deployment, ResourceDeletion, ResourceDeployment, ResourceDeploymentResult, ResourceUpdate } from './deployment';
 import { Environment } from './environment';
-import { Context } from './intrinsics';
+import { Context } from './evaluate';
 import { Stack } from './stack';
 import { Template } from './template';
 
