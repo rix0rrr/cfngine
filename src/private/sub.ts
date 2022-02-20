@@ -6,6 +6,7 @@ export function analyzeSubPattern(pattern: string): SubFragment[] {
   while (ph0 > -1) {
     if (pattern[ph0 + 2] === '!') {
       // "${!" means "don't actually substitute"
+      ret.push({ type: 'literal', content: pattern.substring(start, ph0 + 3) });
       start = ph0 + 3;
       ph0 = pattern.indexOf('${', start);
       continue;
@@ -31,8 +32,8 @@ export function analyzeSubPattern(pattern: string): SubFragment[] {
     ph0 = pattern.indexOf('${', start);
   }
 
-  if (start < pattern.length - 1) {
-    ret.push({ type: 'literal', content: pattern.substr(start) });
+  if (start < pattern.length) {
+    ret.push({ type: 'literal', content: pattern.substring(start) });
   }
 
   return ret;
