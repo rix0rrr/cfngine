@@ -21,14 +21,14 @@ export class Environment {
   public readonly accountId: string;
   public readonly partition: string;
   public readonly urlSuffix: string;
-  public readonly exports: Record<string, string>;
+  public readonly exports: Map<string, string>;
 
   constructor(options: EnvironmentOptions) {
     this.region = options.region ?? 'region-1';
     this.accountId = options.accountId ?? '111111111111';
     this.partition = options.partition ?? 'aws';
     this.urlSuffix = options.urlSuffix ?? 'amazonaws.com';
-    this.exports = {};
+    this.exports = new Map();
   }
 
   public seedContext(context: Context) {
@@ -39,6 +39,6 @@ export class Environment {
   }
 
   public setExport(name: string, value: string) {
-    this.exports[name] = value;
+    this.exports.set(name, value);
   }
 }

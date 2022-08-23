@@ -1,5 +1,6 @@
 import * as fc from 'fast-check';
 import { analyzeSubPattern, SubFragment } from '../../src/private/sub';
+import { arb } from '../arbitraries';
 
 test('test analyzesubpattern', () => {
   const parts = analyzeSubPattern('${AWS::StackName}-LogBucket');
@@ -9,11 +10,9 @@ test('test analyzesubpattern', () => {
   ] as SubFragment[]);
 });
 
-const fcSubString = fc.stringOf(fc.constantFrom('${', '}', 'A', '', '!', '.'), { maxLength: 10 });
-
 test('parsing and reconstituting are each others inverse', () => {
   fc.assert(fc.property(
-    fcSubString, fc.context(),
+    arb.subFormatString, fc.context(),
     (s, ctx) => {
       const frags = analyzeSubPattern(s);
       ctx.log(JSON.stringify(frags));

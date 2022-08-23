@@ -1,50 +1,37 @@
 import { Environment } from './environment';
-import { schema } from './schema';
+import { EvaluationContext } from './evaluate';
+import { Evaluator } from './evaluate/evaluate';
+import { evaluateResource, Resource } from './evaluate/resources';
 import { Stack } from './stack';
 import { Template } from './template';
 
-
 export interface DeploymentOptions {
-  readonly environment?: Environment;
-
   readonly parameterValues?: Record<string, string>;
-  readonly stackName?: string;
-
-  /**
-   * The stack UUID (note: not the ARN)
-   */
-  readonly stackId?: string;
 }
 
 export class Deployment {
-  private readonly environment: Environment;
-  private readonly stack: Stack;
+  private readonly evaluator: Evaluator;
 
   private _outputs?: Record<string, string>;
   private _exports?: Record<string, string>;
 
-  constructor(private readonly template: Template, private readonly options: DeploymentOptions = {}) {
-    this.environment = options.environment ?? Environment.default();
-
-    this.stack = new Stack({
-      stackName: options.stackName ?? 'StackName',
-      stackId: options.stackId ?? '51af3dc0-da77-11e4-872e-1234567db123',
-      resourceNames: {},
+  constructor(private readonly stack: Stack, private readonly template: Template, private readonly options: DeploymentOptions = {}) {
+    this.evaluator = new Evaluator(new EvaluationContext({
       template,
-      environment: options.environment,
-      parameterValues: options.parameterValues,
-    });
+      environment: stack.environment,
+    }));
+    stack.seedContextWithStackAndResources(this.evaluator.context);
+    this.evaluator.context.setParameterValues(options.parameterValues ?? {});
   }
 
   public forEach(block: (x: ResourceDeployment) => ResourceDeploymentResult) {
     const queue = this.template.resourceGraph().topoQueue();
     while (!queue.isEmpty()) {
       queue.withNext((logicalId, _resource) => {
-        const resource = this.stack.evaluatedResource(logicalId);
+        const resource = this.evaluatedResource(logicalId);
 
-        if (resource.Condition && !this.stack.evaluateCondition(resource.Condition)) {
-          // Skip
-          return;
+        if (resource.conditionName && !this.evaluator.evaluateCondition(resource.conditionName)) {
+          return; // Skip
         }
 
         const result = block({
@@ -53,6 +40,10 @@ export class Deployment {
           template: this.template,
         });
 
+        this.evaluator.context.addReferenceable(logicalId, {
+          primaryValue: result.physicalId,
+          attributes: result.attributes,
+        });
         this.stack.addResource(logicalId, result.physicalId, result.attributes);
       });
     }
@@ -75,38 +66,45 @@ export class Deployment {
 
   public updateExports(environment?: Environment) {
     for (const [name, value] of Object.entries(this.exports)) {
-      (environment ?? this.environment).setExport(name, value);
+      (environment ?? this.stack.environment).setExport(name, value);
     }
   }
 
   private evaluateOutputs() {
     this._outputs = {};
     this._exports = {};
-    for (const [name, output] of Object.entries(this.template.outputs)) {
-      if (output.Condition && !this.stack.evaluateCondition(output.Condition)) {
-        continue;
+    for (const [name, output] of this.template.outputs.entries()) {
+      if (output.conditionName && !this.evaluator.evaluateCondition(output.conditionName)) {
+        continue; // Skip
       }
 
-      const value = this.stack.evaluate(output.Value);
+      const value = this.evaluator.evaluate(output.value);
       this._outputs[name] = value;
-      if (output.Export?.Name) {
-        this._exports[this.stack.evaluate(output.Export?.Name)] = value;
+      if (output.exportName) {
+        this._exports[this.evaluator.evaluate(output.exportName)] = value;
       }
     }
+  }
+
+  /**
+   * Evaluate the resource in the destination state of the deployment
+   */
+  private evaluatedResource(logicalId: string): Resource {
+    return evaluateResource(this.template.resource(logicalId), this.evaluator);
   }
 }
 
 export interface ResourceDeployment {
   readonly logicalId: string;
-  readonly resource: schema.Resource;
+  readonly resource: Resource;
   readonly template: Template;
 }
 
 export interface ResourceUpdate {
   readonly physicalId: string;
   readonly logicalId: string;
-  readonly oldResource: schema.Resource;
-  readonly newResource: schema.Resource;
+  readonly oldResource: Resource;
+  readonly newResource: Resource;
   readonly oldTemplate: Template;
   readonly newTemplate: Template;
 }
@@ -115,7 +113,7 @@ export interface ResourceDeletion {
   readonly physicalId: string;
   readonly logicalId: string;
   readonly template: Template;
-  readonly oldResource: schema.Resource;
+  readonly oldResource: Resource;
 }
 
 export interface ResourceDeploymentResult {

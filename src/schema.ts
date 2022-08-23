@@ -1,6 +1,6 @@
 export namespace schema {
   export interface Template {
-    readonly Resources: Record<string, Resource>;
+    readonly Resources?: Record<string, Resource>;
     readonly AWSTemplateFormatVersion?: string;
     readonly Description?: string;
     readonly Metadata?: Record<any, any>;
@@ -16,7 +16,7 @@ export namespace schema {
     readonly Type: string;
     readonly Properties?: Record<string, CfnValue<any>>;
     readonly Condition?: string;
-    readonly DependsOn?: string;
+    readonly DependsOn?: string | string[];
     readonly DeletionPolicy?: 'Retain' | 'Delete' | 'Snapshot';
     readonly UpdateReplacePolicy?: 'Retain' | 'Delete' | 'Snapshot';
     readonly Metadata?: Record<string, any>;

@@ -1,4 +1,5 @@
-import { makeContext, StandardEvaluator, Template } from '../../src';
+import { parseExpression, Template } from '../../src';
+import { testEvaluator } from '../util';
 
 describe('Mapping with Arrays', () => {
   const template = new Template({
@@ -16,16 +17,20 @@ describe('Mapping with Arrays', () => {
   });
 
   test('successful lookup', () => {
-    const ev = StandardEvaluator.forTemplate(template, makeContext({
-      'AWS::Region': 'ap-northeast-2',
-    }));
-    expect(ev.evaluate({ "Fn::FindInMap": ["RegionMap", { "Ref": "AWS::Region" }, "AZs"] })).toEqual(["ap-northeast-2a", "ap-northeast-2c", "ap-northeast-2b"]);
+    const ev = testEvaluator(template, {
+      context: {
+        'AWS::Region': 'ap-northeast-2',
+      },
+    });
+    expect(ev.evaluate(parseExpression({ "Fn::FindInMap": ["RegionMap", { "Ref": "AWS::Region" }, "AZs"] }))).toEqual(["ap-northeast-2a", "ap-northeast-2c", "ap-northeast-2b"]);
   });
 
   test('failed lookup', () => {
-    const ev = StandardEvaluator.forTemplate(template, makeContext({
-      'AWS::Region': 'ap-northeast-1',
-    }));
-    expect(() => ev.evaluate({ "Fn::FindInMap": ["RegionMap", { "Ref": "AWS::Region" }, "AZs"] })).toThrow(/has no key/);
+    const ev = testEvaluator(template, {
+      context: {
+        'AWS::Region': 'ap-northeast-1',
+      },
+    });
+    expect(() => ev.evaluate(parseExpression({ "Fn::FindInMap": ["RegionMap", { "Ref": "AWS::Region" }, "AZs"] }))).toThrow(/has no key/);
   });
 });

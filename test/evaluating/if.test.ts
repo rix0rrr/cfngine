@@ -1,17 +1,19 @@
-import { ContextRecord, StandardEvaluator } from "../../src";
+import { ContextRecord, EvaluationContext, parseExpression, Template } from '../../src';
+import { Evaluator } from '../../src/evaluate/evaluate';
+import { testEvaluator } from '../util';
 
 test('Fn::If lazily evaluates arguments', () => {
-  const evaluator = StandardEvaluator.fromSources({
-    conditions: {
+  const template = new Template({
+    Conditions: {
       Tautology: { 'Fn::Equals': ['x', 'x'] },
     },
-    context: new Map([
-      ['Explodes', unevaluatableContextValue()],
-    ]),
   });
 
+  const evaluator = testEvaluator(template);
+  evaluator.context.addReferenceable('Explodes', unevaluatableContextValue());
+
   // THEN - should not explode because the { Ref } is never evaluated
-  expect(evaluator.evaluate({ 'Fn::If': ['Tautology', 'Hooray', { Ref: 'Explodes' }]})).toEqual('Hooray');
+  expect(evaluator.evaluate(parseExpression({ 'Fn::If': ['Tautology', 'Hooray', { Ref: 'Explodes' }]}))).toEqual('Hooray');
 });
 
 

@@ -1,11 +1,11 @@
 import { Deployment, ResourceDeletion, ResourceDeployment, ResourceDeploymentResult, ResourceUpdate } from './deployment';
 import { Environment } from './environment';
-import { Context } from './evaluate';
+import { Context, evaluateResource } from './evaluate';
+import { assertString } from './private/types';
 import { Stack } from './stack';
 import { Template } from './template';
 
 export interface DifferentialDeploymentOptions {
-  readonly environment?: Environment;
   readonly parameterValues?: Record<string, string>;
 }
 
@@ -20,28 +20,30 @@ export interface IDifferentialDeploymentHandler {
 
 export class DifferentialDeployment {
   private readonly context: Context = new Map();
-  private readonly environment: Environment;
   private readonly deployment: Deployment;
 
   constructor(private readonly stack: Stack, private readonly template: Template, options: DifferentialDeploymentOptions = {}) {
-    this.environment = options.environment ?? Environment.default();
-    this.deployment = new Deployment(template, {
-      environment: options.environment,
+    this.deployment = new Deployment(stack, template, {
       parameterValues: options.parameterValues,
-      stackId: stack.stackId,
-      stackName: stack.stackName,
     });
   }
 
   public forEach(handler: IDifferentialDeploymentHandler) {
-    const toDelete = {...this.stack.resourceNames};
+    const toDelete = new Map(this.stack.resources.entries());
 
     this.deployment.forEach(deployment => {
-      const oldResource = this.stack.template.resources[deployment.logicalId];
-      const physicalId = this.stack.resourceNames[deployment.logicalId];
+      const oldResourceContext = this.stack.resources.get(deployment.logicalId);
+      const oldResource = this.stack.template.resources.get(deployment.logicalId);
+
+      if (!!oldResource !== !!oldResourceContext) {
+        throw new Error('Invariant violated');
+      }
+
       // { physicalId => oldResource }
 
-      if (physicalId) {
+      if (oldResource && oldResourceContext) {
+        const physicalId = assertString(oldResourceContext.primaryValue);
+
         const result = handler.update({
           logicalId: deployment.logicalId,
           physicalId,
@@ -53,7 +55,7 @@ export class DifferentialDeployment {
 
         // No replacement
         if (result.physicalId === physicalId) {
-          delete toDelete[physicalId];
+          toDelete.delete(physicalId);
         }
 
         return result;
@@ -62,10 +64,10 @@ export class DifferentialDeployment {
       }
     });
 
-    for (const [logicalId, physicalId] of Object.entries(toDelete)) {
+    for (const [logicalId, resourceAttrs] of toDelete.entries()) {
       handler.delete({
         logicalId,
-        physicalId,
+        physicalId: assertString(resourceAttrs.primaryValue),
         oldResource: this.stack.evaluatedResource(logicalId),
         template: this.stack.template,
       });

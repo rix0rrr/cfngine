@@ -1,8 +1,8 @@
-import { Context, ContextValue } from './evaluate';
-import { parseNumber } from './private/types';
-import { schema } from './schema';
+import { Context, ContextValue } from '../evaluate';
+import { parseNumber } from '../private/types';
+import { schema } from '../schema';
 
-export class Parameters {
+export class TemplateParameters {
   constructor(private readonly parameters: Record<string, schema.Parameter>) {
   }
 

@@ -2,10 +2,9 @@ import { Deployment } from './deployment';
 import { Template } from './template';
 import { proxiedGetter } from './private/everything-obj';
 import { Environment } from './environment';
-import { schema } from '.';
+import { schema, Stack } from '.';
 import stringify from 'json-stringify-pretty-compact';
-
-
+import path from 'path';
 
 async function main() {
   const files = process.argv.slice(2);
@@ -20,11 +19,16 @@ async function main() {
       continue;
     }
 
+    const stack = new Stack({
+      stackName: path.basename(file),
+      stackId: '1234',
+      environment: Environment.from({ region: 'sa-east-1' }),
+    });
+
     const parameterValues = Object.fromEntries(Object.entries(template.parameters.required).map(([name, param]) =>
       [name, fakeParameterValue(name, param)]));
 
-    const deployment = new Deployment(template, {
-      environment: Environment.from({ region: 'sa-east-1' }),
+    const deployment = new Deployment(stack, template, {
       parameterValues,
     });
     deployment.forEach(d => {

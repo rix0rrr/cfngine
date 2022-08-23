@@ -22,7 +22,10 @@ export function analyzeSubPattern(pattern: string): SubFragment[] {
       ret.push({ type: 'literal', content: pattern.substring(start, ph0) });
     }
     if (placeholder.includes('.')) {
-      const [logicalId, attr] = placeholder.split('.');
+      const logicalId = placeholder.split('.')[0];
+      // Because split('.', 2) doesn't do what you think it does
+      const attr = placeholder.substring(logicalId.length + 1);
+
       ret.push({ type: 'getatt', logicalId: logicalId!, attr: attr! });
     } else {
       ret.push({ type: 'ref', logicalId: placeholder });

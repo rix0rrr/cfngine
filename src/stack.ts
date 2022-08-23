@@ -1,12 +1,13 @@
 import { Environment } from './environment';
-import { ContextRecord, NO_VALUE, StandardEvaluator } from './evaluate';
+import { Context, ContextRecord, evaluateResource, EvaluationContext, NO_VALUE, Resource } from './evaluate';
+import { Evaluator } from './evaluate/evaluate';
 import { Template } from './template';
 
 export interface StackOptions {
   readonly stackName: string;
   readonly stackId: string;
-  readonly template: Template;
-  readonly resourceNames: Record<string, string>;
+  readonly template?: Template;
+  readonly resources?: Context;
   readonly parameterValues?: Record<string, string>;
   readonly environment?: Environment;
 }
@@ -14,80 +15,82 @@ export interface StackOptions {
 export class Stack {
   public readonly stackName: string;
   public readonly stackId: string;
-  public readonly template: Template;
   public readonly parameterValues: Record<string, string>;
-  public readonly resourceNames: Record<string, string>;
+  public readonly resources: Context;
   public readonly environment: Environment;
-  private readonly evaluator: StandardEvaluator;
+  public readonly evaluator: Evaluator;
+
+  private _template: Template;
 
   constructor(options: StackOptions) {
     this.stackId = options.stackId;
     this.stackName = options.stackName;
     this.environment = options.environment ?? Environment.default();
-    this.template = options.template;
-    this.resourceNames = options.resourceNames;
+    this._template = options.template ?? Template.empty();
+    this.resources = options.resources ?? new Map();
     this.parameterValues = options.parameterValues ?? {};
 
+    assertSetsEqual(new Set(this.resources.keys()), new Set(this.template.resources.keys()));
+
     this.evaluator = this.makeEvaluator();
+  }
+
+  public get template() {
+    return this._template;
   }
 
   public validateResourceCompleteness() {
     // FIXME: validate resource names against template, based on conditions
   }
 
-  public evaluate(what: any) {
-    return this.evaluator.evaluate(what);
-  }
-
-  public evaluatedResource(logicalId: string) {
-    const resource = this.template.resource(logicalId);
-    return {
-      ...resource,
-      Properties: this.evaluate(resource.Properties)
-    };
-  }
-
-  public evaluateCondition(conditionId: string) {
-    const result = this.evaluate(this.template.condition(conditionId));
-    if (typeof result !== 'boolean') {
-      throw new Error(`Condition does not evaluate to boolean: ${JSON.stringify(result)}`);
-    }
-    return result;
-  }
-
   public addResource(logicalId: string, physicalId: string, attributes?: Record<string, string>) {
-    this.evaluator.context.set(logicalId, {
+    this.resources.set(logicalId, {
       primaryValue: physicalId,
       attributes,
     });
   }
 
-  private makeEvaluator() {
-    const context = new Map<string, ContextRecord>();
+  public setTemplate(template: Template) {
+    this._template = template;
+  }
 
-    // Parameters
-    this.template.parameters.seedDefaults(context);
-    for (const [name, value] of Object.entries(this.parameterValues ?? {})) {
-      context.set(name, { primaryValue: this.template.parameters.parse(name, value) });
-    }
-    this.template.parameters.assertAllPresent(context);
+  /**
+   * Evaluate the resource in the starting state of the stack
+   */
+  public evaluatedResource(logicalId: string): Resource {
+    return evaluateResource(this.template.resource(logicalId), this.evaluator);
+  }
 
-    // Pseudos
+  public seedContextWithStackAndResources(context: EvaluationContext) {
     const stackArn = `arn:${this.environment.partition}:cloudformation:${this.environment.region}:${this.environment.accountId}:stack/${this.stackName}/${this.stackId}`;
 
-    context.set('AWS::NoValue', { primaryValue: NO_VALUE });
-    context.set('AWS::NotificationARNs', { primaryValue: [] });
-    context.set('AWS::StackName', { primaryValue: this.stackName });
-    context.set('AWS::StackId', { primaryValue: stackArn });
-
-    this.environment.seedContext(context);
-
-    // Existing resources
-    for (const [logicalId, name] of Object.entries(this.resourceNames)) {
-      // FIXME: And attributes...?
-      context.set(logicalId, { primaryValue: name });
+    context.addReferenceable('AWS::StackName', { primaryValue: this.stackName });
+    context.addReferenceable('AWS::StackId', { primaryValue: stackArn });
+    for (const [logicalId, resource] of this.resources.entries()) {
+      context.addReferenceable(logicalId, resource);
     }
+  }
 
-    return StandardEvaluator.forTemplate(this.template, context, this.environment.exports);
+  private makeEvaluator() {
+    const context = new EvaluationContext({
+      environment: this.environment,
+      template: this.template,
+    });
+
+    context.setParameterValues(this.parameterValues);
+    this.seedContextWithStackAndResources(context);
+
+    return new Evaluator(context);
+  }
+}
+
+function assertSetsEqual<A>(xs: Set<A>, ys: Set<A>) {
+  const yxs = Array.from(ys.values()).filter(y => !xs.has(y));
+  const xys = Array.from(xs.values()).filter(x => !ys.has(x));
+
+  if (yxs.length > 0 || xys.length > 0) {
+    const yxss = Array.from(yxs).map(x => `-${x}`);
+    const xyss = Array.from(xys).map(x => `+${x}`);
+    throw new Error(`Sets should be the same, found: ${[...xyss,...yxss]}`);
   }
 }
