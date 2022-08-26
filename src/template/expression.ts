@@ -1,3 +1,4 @@
+import { string } from "fast-check";
 import { analyzeSubPattern, SubFragment } from "../private/sub";
 import { assertField, assertList, assertObject, assertString } from "../private/types";
 
@@ -162,6 +163,7 @@ export function parseExpression(x: unknown): TemplateExpression {
   if (typeof x === 'string') { return { type: 'string', value: x }; }
   // There are no such things as numbers in CloudFormation.
   if (typeof x === 'number') { return { type: 'string', value: `${x}` }; }
+  if (typeof x === 'boolean') { return { type: 'string', value: `${x}` }; }
   if (Array.isArray(x)) { return { type: 'array', array: x.map(parseExpression) }; }
 
   const INTRINSIC_TABLE: Record<string, (x: unknown) => IntrinsicExpression> = {
@@ -304,6 +306,12 @@ export function parseExpression(x: unknown): TemplateExpression {
     if (keys.length === 1 && INTRINSIC_TABLE[keys[0]]) {
       return INTRINSIC_TABLE[keys[0]]((x as any)[keys[0]]);
     }
+
+    return {
+      type: 'object',
+      fields: Object.fromEntries(Object.entries(x)
+        .map(([k, v]) => [k, parseExpression(v)])),
+    };
   }
 
   throw new Error(`Unable to parse: ${JSON.stringify(x)}`);
