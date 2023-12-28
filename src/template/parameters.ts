@@ -2,8 +2,15 @@ import { Context, ContextValue } from '../evaluate';
 import { parseNumber } from '../private/types';
 import { schema } from '../schema';
 
+interface TemplateParametersOptions {
+  readonly symbolic?: boolean;
+}
+
 export class TemplateParameters {
-  constructor(private readonly parameters: Record<string, schema.Parameter>) {
+  private readonly symbolic: boolean;
+
+  constructor(private readonly parameters: Record<string, schema.Parameter>, options: TemplateParametersOptions = {}) {
+    this.symbolic = options.symbolic ?? false;
   }
 
   public get required(): Record<string, schema.Parameter> {
@@ -19,7 +26,7 @@ export class TemplateParameters {
   public seedDefaults(context: Context) {
     for (const [name, param] of Object.entries(this.parameters ?? {})) {
       if (param.Default) {
-        context.set(name, { primaryValue: parseParamValue(name, param, param.Default) });
+        context.set(name, { primaryValue: this.symbolic ? `Default:${param.Default}` : parseParamValue(name, param, param.Default) });
       }
     }
   }

@@ -28,7 +28,9 @@ async function main() {
 }
 
 async function create(args: string[], _options: OptionValues) {
-  const template = await Template.fromFile(args[0]);
+  const template = await Template.fromFile(args[0], {
+    symbolic: true,
+  });
   const stack = new Stack({
     stackName: 'Stack',
     stackId: '111111',

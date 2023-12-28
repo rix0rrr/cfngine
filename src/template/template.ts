@@ -8,16 +8,20 @@ import { parseCfnYaml } from '../private/cfn-yaml';
 import { DependencyGraph } from '../private/toposort';
 import { schema } from '../schema';
 
+export interface TemplateOptions {
+  readonly symbolic?: boolean;
+}
+
 /**
  * A template describes the desired state of some infrastructure
  */
 export class Template {
-  public static async fromFile(fileName: string): Promise<Template> {
+  public static async fromFile(fileName: string, options: TemplateOptions = {}): Promise<Template> {
     const tpl = parseCfnYaml(await fs.readFile(fileName, { encoding: 'utf-8' }));
     if (!(tpl.Resources)) {
       throw new Error(`${fileName}: does not look like a template`);
     }
-    return new Template(tpl);
+    return new Template(tpl, options);
   }
 
   public static empty(): Template {
@@ -32,8 +36,8 @@ export class Template {
   public readonly mappings: Map<string, TemplateMapping>;
   public readonly outputs: Map<string, TemplateOutput>;
 
-  constructor(private readonly template: schema.Template) {
-    this.parameters = new TemplateParameters(this.template.Parameters ?? {});
+  constructor(private readonly template: schema.Template, options: TemplateOptions = {}) {
+    this.parameters = new TemplateParameters(this.template.Parameters ?? {}, { symbolic: options.symbolic });
 
     this.resources = new Map(Object.entries(template.Resources ?? {})
       .map(([k, v]) => [k, parseTemplateResource(v)]));
