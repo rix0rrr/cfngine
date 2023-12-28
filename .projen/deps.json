@@ -76,6 +76,10 @@
       "type": "build"
     },
     {
+      "name": "commander",
+      "type": "runtime"
+    },
+    {
       "name": "json-stringify-pretty-compact",
       "type": "runtime"
     },

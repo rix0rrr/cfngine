@@ -7,6 +7,7 @@ import { Template } from './template';
 
 export interface DeploymentOptions {
   readonly parameterValues?: Record<string, string>;
+  readonly symbolic?: boolean;
 }
 
 export class Deployment {
@@ -19,6 +20,7 @@ export class Deployment {
     this.evaluator = new Evaluator(new EvaluationContext({
       template,
       environment: stack.environment,
+      symbolic: options.symbolic,
     }));
     stack.seedContextWithStackAndResources(this.evaluator.context);
     this.evaluator.context.setParameterValues(options.parameterValues ?? {});

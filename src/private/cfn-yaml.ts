@@ -5,6 +5,7 @@ function shortForms(): yaml.Tags {
     mkTag('Ref', 'scalar'),
     mkTag('Condition', 'scalar'),
     mkTag('Fn::Sub', 'seq'),
+    mkTag('Fn::Sub', 'scalar'),
     mkTag('Fn::Base64', 'scalar'),
     mkTag('Fn::Cidr', 'seq'),
     mkTag('Fn::FindInMap', 'seq'),

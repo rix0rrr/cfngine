@@ -5,8 +5,8 @@ const project = new typescript.TypeScriptProject({
   projenrcTs: true,
   defaultReleaseBranch: 'main',
 
-  deps: ['json-stringify-pretty-compact', 'yaml'], /* Runtime dependencies of this module. */
-  devDeps: ['dedent', 'fast-check'], /* Build dependencies for this module. */
+  deps: ['json-stringify-pretty-compact', 'yaml', 'commander'],
+  devDeps: ['dedent', 'fast-check'],
 
   release: true,
   releaseToNpm: true,

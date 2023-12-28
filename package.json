@@ -1,6 +1,9 @@
 {
   "name": "cfngine",
   "description": "Local emulation of the CloudFormation engine",
+  "bin": {
+    "cfngine": "bin/cfngine"
+  },
   "scripts": {
     "build": "npx projen build",
     "bump": "npx projen bump",
@@ -41,6 +44,7 @@
     "typescript": "^4.5.4"
   },
   "dependencies": {
+    "commander": "^11.1.0",
     "json-stringify-pretty-compact": "^4.0.0",
     "yaml": "^2.3.4"
   },

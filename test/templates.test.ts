@@ -15,9 +15,9 @@ test.each([
     },
   ],
 
-  // Test !Sub
+  // Test !Sub array variant
   [
-    '!Sub',
+    '!Sub array',
     dedent`
       Value:
         !Sub
@@ -27,6 +27,18 @@ test.each([
     `,
     {
       Value: { 'Fn::Sub': ['String', { Var1Name: 'Var1Value', Var2Name: 'Var2Value' }] },
+    },
+  ],
+
+  // Test !Sub string variant
+  [
+    '!Sub string',
+    dedent`
+      Value:
+        !Sub \${Foo.Arn}.Hello
+    `,
+    {
+      Value: { 'Fn::Sub': '${Foo.Arn}.Hello' },
     },
   ],
 

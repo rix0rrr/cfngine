@@ -18,7 +18,7 @@ export interface TemplateResource {
 export function parseTemplateResource(resource: schema.Resource): TemplateResource {
   const properties = parseObject(resource.Properties);
 
-  return {
+  const ret = {
     type: assertString(assertField(resource, 'Type')),
     properties,
     conditionName: ifField(resource, 'Condition', assertString),
@@ -30,6 +30,7 @@ export function parseTemplateResource(resource: schema.Resource): TemplateResour
     deletionPolicy: ifField(resource, 'DeletionPolicy', parseRetentionPolicy) ?? 'Delete',
     updateReplacePolicy: ifField(resource, 'UpdateReplacePolicy', parseRetentionPolicy) ?? 'Delete',
   };
+  return ret;
 }
 
 function findReferencedLogicalIds(xs: Record<string, TemplateExpression>, into: string[] = []): string[] {

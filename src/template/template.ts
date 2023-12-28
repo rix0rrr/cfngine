@@ -73,7 +73,7 @@ export class Template {
    * well as 'DependsOn' declarations.
    */
   public resourceGraph(): DependencyGraph<TemplateResource> {
-    const dependencies = new Map(Object.entries(this.resources).map(([k, v]) => [k, v.dependencies]));
+    const dependencies = new Map(Array.from(this.resources.entries()).map(([k, v]) => [k, v.dependencies] as const));
     return new DependencyGraph(Object.fromEntries(this.resources.entries()), dependencies);
   }
 }

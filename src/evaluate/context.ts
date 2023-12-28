@@ -14,16 +14,19 @@ export type Context = Map<string, ContextRecord>;
 export interface EvaluationContextOptions {
   readonly template?: Template;
   readonly environment?: Environment;
+  readonly symbolic?: boolean;
 }
 
 export class EvaluationContext {
   private readonly context = new Map<string, ContextRecord>();
   private readonly template?: Template;
   private readonly environment?: Environment;
+  private readonly symbolic: boolean;
 
   constructor(opts: EvaluationContextOptions = {}) {
     this.template = opts.template;
     this.environment = opts.environment;
+    this.symbolic = opts.symbolic ?? false;
 
     this.context.set('AWS::NoValue', { primaryValue: NO_VALUE });
     this.context.set('AWS::NotificationARNs', { primaryValue: [] });
@@ -74,12 +77,23 @@ export class EvaluationContext {
   public exportValue(exportName: string) {
     const exp = this.environment?.exports.get(exportName);
     if (!exp) {
+      if (this.symbolic) {
+        return `\${Export:${exportName}}`;
+      }
       throw new Error(`No such export: ${exportName}`);
     }
     return exp;
   }
 
   public azs(_regionName: string): string[] {
+    if (this.symbolic) {
+      return [
+        '${AZ:1}',
+        '${AZ:2}',
+        '${AZ:3}',
+      ];
+    }
+
     throw new Error('AZs not supported yet');
   }
 }

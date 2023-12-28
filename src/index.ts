@@ -5,3 +5,4 @@ export * from './evaluate';
 export * from './schema';
 export * from './stack';
 export * from './template';
+export * from './symbolic-context';
