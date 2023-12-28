@@ -15,7 +15,7 @@ export class Deployment {
   private _outputs?: Record<string, string>;
   private _exports?: Record<string, string>;
 
-  constructor(private readonly stack: Stack, private readonly template: Template, private readonly options: DeploymentOptions = {}) {
+  constructor(private readonly stack: Stack, private readonly template: Template, options: DeploymentOptions = {}) {
     this.evaluator = new Evaluator(new EvaluationContext({
       template,
       environment: stack.environment,

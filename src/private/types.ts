@@ -1,4 +1,4 @@
-import { RetentionPolicy } from "../template/enums";
+import { RetentionPolicy } from '../template/enums';
 
 export function parseNumber(asString: string | number) {
   const asNumber = parseInt(`${asString}`, 10);

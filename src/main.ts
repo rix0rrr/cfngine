@@ -1,10 +1,10 @@
-import { Deployment } from './deployment';
-import { Template } from './template';
-import { proxiedGetter } from './private/everything-obj';
-import { Environment } from './environment';
-import { schema, Stack } from '.';
-import stringify from 'json-stringify-pretty-compact';
 import path from 'path';
+import stringify from 'json-stringify-pretty-compact';
+import { schema, Stack } from '.';
+import { Deployment } from './deployment';
+import { Environment } from './environment';
+import { proxiedGetter } from './private/everything-obj';
+import { Template } from './template';
 
 async function main() {
   const files = process.argv.slice(2);
@@ -14,7 +14,7 @@ async function main() {
     let template;
     try {
       template = await Template.fromFile(file);
-    } catch(e) {
+    } catch (e) {
       console.error(e);
       continue;
     }

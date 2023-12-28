@@ -1,12 +1,12 @@
 import { promises as fs } from 'fs';
-import { schema } from '../schema';
-import { DependencyGraph } from '../private/toposort';
-import { TemplateParameters } from './parameters';
-import { parseCfnYaml } from '../private/cfn-yaml';
-import { parseTemplateResource, TemplateResource } from './resource';
 import { parseExpression, TemplateExpression } from './expression';
-import { parseOutput, TemplateOutput } from './output';
 import { parseMapping, TemplateMapping } from './mappings';
+import { parseOutput, TemplateOutput } from './output';
+import { TemplateParameters } from './parameters';
+import { parseTemplateResource, TemplateResource } from './resource';
+import { parseCfnYaml } from '../private/cfn-yaml';
+import { DependencyGraph } from '../private/toposort';
+import { schema } from '../schema';
 
 /**
  * A template describes the desired state of some infrastructure
@@ -45,7 +45,7 @@ export class Template {
       .map(([k, v]) => [k, parseMapping(v)]));
 
     this.outputs = new Map(Object.entries(template.Outputs ?? {})
-        .map(([k, v]) => [k, parseOutput(v)]));
+      .map(([k, v]) => [k, parseOutput(v)]));
   }
 
   public resource(logicalId: string) {
@@ -72,7 +72,7 @@ export class Template {
    * This includes relations established both by property references, as
    * well as 'DependsOn' declarations.
    */
-  public resourceGraph(): DependencyGraph<TemplateResource>  {
+  public resourceGraph(): DependencyGraph<TemplateResource> {
     const dependencies = new Map(Object.entries(this.resources).map(([k, v]) => [k, v.dependencies]));
     return new DependencyGraph(Object.fromEntries(this.resources.entries()), dependencies);
   }

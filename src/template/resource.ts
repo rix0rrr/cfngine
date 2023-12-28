@@ -1,7 +1,7 @@
-import { assertField, assertObject, assertString, assertStringOrList, parseRetentionPolicy } from '../private/types';
-import { schema } from '../schema';
 import { RetentionPolicy } from './enums';
 import { ifField, parseObject, TemplateExpression } from './expression';
+import { assertField, assertObject, assertString, assertStringOrList, parseRetentionPolicy } from '../private/types';
+import { schema } from '../schema';
 
 export interface TemplateResource {
   readonly type: string;

@@ -14,7 +14,7 @@ describe('template with Condition', () => {
       },
     },
     Conditions: {
-      Maybe: { 'Fn::Equals': [ { Ref: 'DoIt' }, 'Yes' ] },
+      Maybe: { 'Fn::Equals': [{ Ref: 'DoIt' }, 'Yes'] },
     },
     Resources: {
       SomeResource: {
@@ -75,7 +75,7 @@ describe('Output with condition', () => {
       DoIt: { Type: 'String' },
     },
     Conditions: {
-      Maybe: { 'Fn::Equals': [ { Ref: 'DoIt' }, 'Yes' ] },
+      Maybe: { 'Fn::Equals': [{ Ref: 'DoIt' }, 'Yes'] },
     },
     Resources: {
       SomeResource: {
@@ -86,7 +86,7 @@ describe('Output with condition', () => {
     Outputs: {
       SomeResourceId: {
         Condition: 'Maybe',
-        Value: { Ref: 'SomeResource' }
+        Value: { Ref: 'SomeResource' },
       },
     },
   });

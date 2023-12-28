@@ -25,7 +25,7 @@ export class TemplateParameters {
   }
 
   public assertAllPresent(context: Context) {
-    for (const [name, param] of Object.entries(this.parameters ?? {})) {
+    for (const name of Object.keys(this.parameters ?? {})) {
       if (!context.has(name)) {
         throw new Error(`Parameter ${name}: missing value`);
       }
@@ -68,12 +68,12 @@ function parseParamValue(name: string, param: schema.Parameter, value: string) {
 
   return ret;
 
-  function parseScalar(value: string, type: ScalarParameterType) {
+  function parseScalar(x: string, type: ScalarParameterType) {
     switch (type.type) {
       case 'number':
-        return parseNumber(value).asString;
+        return parseNumber(x).asString;
       case 'string':
-        return value;
+        return x;
     }
   }
 }
@@ -124,7 +124,7 @@ function parseParameterType(specifier: string): ParameterType {
 }
 
 export type ParameterType =
-  & (ScalarParameterType | { readonly type: 'list', readonly elementType: ScalarParameterType })
+  & (ScalarParameterType | { readonly type: 'list'; readonly elementType: ScalarParameterType })
   & ParameterSource
   ;
 
@@ -135,7 +135,7 @@ export type ParameterSource =
 export type ScalarParameterType =
   | { readonly type: 'string' }
   | { readonly type: 'number' }
-  | { readonly type: 'string', readonly resourceIdentifier: ResourceIdentifier };
+  | { readonly type: 'string'; readonly resourceIdentifier: ResourceIdentifier };
 
 export type ResourceIdentifier =
     | 'AWS::EC2::AvailabilityZone::Name'

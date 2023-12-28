@@ -1,7 +1,5 @@
 import { Environment } from '../environment';
-import { schema } from '../schema';
-import { Template, TemplateExpression } from '../template';
-import { TemplateMapping } from '../template/mappings';
+import { Template } from '../template';
 export type ContextValue = string | string[] | symbol;
 
 export const NO_VALUE = Symbol('AWS::NoValue');

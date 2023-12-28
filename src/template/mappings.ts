@@ -1,4 +1,4 @@
-import { assertObject, assertStringOrList, mapFromObject } from "../private/types";
+import { assertStringOrList, mapFromObject } from '../private/types';
 
 export type TemplateMapping = Map<string, Map<string, string | string[]>>;
 

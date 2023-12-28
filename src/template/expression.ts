@@ -1,6 +1,5 @@
-import { string } from "fast-check";
-import { analyzeSubPattern, SubFragment } from "../private/sub";
-import { assertField, assertList, assertObject, assertString } from "../private/types";
+import { analyzeSubPattern, SubFragment } from '../private/sub';
+import { assertField, assertList, assertObject, assertString } from '../private/types';
 
 export type TemplateExpression =
   | StringLiteral
@@ -159,34 +158,38 @@ export interface EqualsIntrinsic {
   readonly value2: TemplateExpression;
 }
 
-export function parseExpression(x: unknown): TemplateExpression {
-  if (typeof x === 'string') { return { type: 'string', value: x }; }
+export function parseExpression(expr: unknown): TemplateExpression {
+  if (typeof expr === 'string') { return { type: 'string', value: expr }; }
   // There are no such things as numbers in CloudFormation.
-  if (typeof x === 'number') { return { type: 'string', value: `${x}` }; }
-  if (typeof x === 'boolean') { return { type: 'string', value: `${x}` }; }
-  if (Array.isArray(x)) { return { type: 'array', array: x.map(parseExpression) }; }
+  if (typeof expr === 'number') { return { type: 'string', value: `${expr}` }; }
+  if (typeof expr === 'boolean') { return { type: 'string', value: `${expr}` }; }
+  if (Array.isArray(expr)) { return { type: 'array', array: expr.map(parseExpression) }; }
 
   const INTRINSIC_TABLE: Record<string, (x: unknown) => IntrinsicExpression> = {
     'Ref': (x) => ({
-      type: 'intrinsic', fn: 'ref',
+      type: 'intrinsic',
+      fn: 'ref',
       logicalId: assertString(x),
     }),
     'Fn::GetAtt': (x) => {
       const xs = assertList(x, [2]);
       return {
-        type: 'intrinsic', fn: 'getAtt',
+        type: 'intrinsic',
+        fn: 'getAtt',
         logicalId: assertString(xs[0]),
         attribute: parseExpression(xs[1]),
       };
     },
     'Fn::Base64': (x) => ({
-      type: 'intrinsic', fn: 'base64',
+      type: 'intrinsic',
+      fn: 'base64',
       expression: parseExpression(x),
     }),
     'Fn::Cidr': (x) => {
       const xs = assertList(x, [3]);
       return {
-        type: 'intrinsic', fn: 'cidr',
+        type: 'intrinsic',
+        fn: 'cidr',
         ipBlock: parseExpression(xs[0]),
         count: parseExpression(xs[1]),
         netMask: parseExpression(xs[2]),
@@ -195,33 +198,38 @@ export function parseExpression(x: unknown): TemplateExpression {
     'Fn::FindInMap': (x) => {
       const xs = assertList(x, [3]);
       return {
-        type: 'intrinsic', fn: 'findInMap',
+        type: 'intrinsic',
+        fn: 'findInMap',
         mappingName: assertString(xs[0]),
         key1: parseExpression(xs[1]),
         key2: parseExpression(xs[2]),
       };
     },
     'Fn::GetAZs': (x) => ({
-      type: 'intrinsic', fn: 'getAzs',
+      type: 'intrinsic',
+      fn: 'getAzs',
       region: parseExpression(x),
     }),
     'Fn::If': (x) => {
       const xs = assertList(x, [3]);
       return {
-        type: 'intrinsic', fn: 'if',
+        type: 'intrinsic',
+        fn: 'if',
         conditionName: assertString(xs[0]),
         then: parseExpression(xs[1]),
         else: parseExpression(xs[2]),
       };
     },
     'Fn::ImportValue': (x) => ({
-      type: 'intrinsic', fn: 'importValue',
+      type: 'intrinsic',
+      fn: 'importValue',
       export: parseExpression(x),
     }),
     'Fn::Join': (x) => {
       const xs = assertList(x, [2]);
       return {
-        type: 'intrinsic', fn: 'join',
+        type: 'intrinsic',
+        fn: 'join',
         separator: assertString(xs[0]),
         array: parseExpression(xs[1]),
       };
@@ -229,7 +237,8 @@ export function parseExpression(x: unknown): TemplateExpression {
     'Fn::Select': (x) => {
       const xs = assertList(x, [2]);
       return {
-        type: 'intrinsic', fn: 'select',
+        type: 'intrinsic',
+        fn: 'select',
         index: parseExpression(xs[0]),
         array: parseExpression(xs[1]),
       };
@@ -237,7 +246,8 @@ export function parseExpression(x: unknown): TemplateExpression {
     'Fn::Split': (x) => {
       const xs = assertList(x, [2]);
       return {
-        type: 'intrinsic', fn: 'split',
+        type: 'intrinsic',
+        fn: 'split',
         separator: assertString(xs[0]),
         value: parseExpression(xs[1]),
       };
@@ -253,12 +263,13 @@ export function parseExpression(x: unknown): TemplateExpression {
         pattern = assertString(xs[0]);
         context = parseObject(xs[1]);
       } else {
-        throw new Error(`Argument to {Fn::Sub} is of wrong type`);
+        throw new Error('Argument to {Fn::Sub} is of wrong type');
       }
 
       const fragments = analyzeSubPattern(pattern);
       return {
-        type: 'intrinsic', fn: 'sub',
+        type: 'intrinsic',
+        fn: 'sub',
         fragments,
         additionalContext: context,
       };
@@ -268,53 +279,58 @@ export function parseExpression(x: unknown): TemplateExpression {
 
       const parameters = parseObject(assertField(fields, 'Parameters'));
       return {
-        type: 'intrinsic', fn: 'transform',
+        type: 'intrinsic',
+        fn: 'transform',
         transformName: assertString(assertField(fields, 'Name')),
         parameters,
       };
     },
     'Fn::And': (x) => {
       return {
-        type: 'intrinsic', fn: 'and',
+        type: 'intrinsic',
+        fn: 'and',
         operands: assertList(x).map(parseExpression),
       };
     },
     'Fn::Or': (x) => {
       return {
-        type: 'intrinsic', fn: 'or',
+        type: 'intrinsic',
+        fn: 'or',
         operands: assertList(x).map(parseExpression),
       };
     },
     'Fn::Not': (x) => {
       return {
-        type: 'intrinsic', fn: 'not',
+        type: 'intrinsic',
+        fn: 'not',
         operand: parseExpression(x),
       };
     },
     'Fn::Equals': (x) => {
       const [x1, x2] = assertList(x, [2]);
       return {
-        type: 'intrinsic', fn: 'equals',
+        type: 'intrinsic',
+        fn: 'equals',
         value1: parseExpression(x1),
         value2: parseExpression(x2),
       };
     },
   };
 
-  if (typeof x === 'object' && x) {
-    const keys = Object.keys(x);
+  if (typeof expr === 'object' && expr) {
+    const keys = Object.keys(expr);
     if (keys.length === 1 && INTRINSIC_TABLE[keys[0]]) {
-      return INTRINSIC_TABLE[keys[0]]((x as any)[keys[0]]);
+      return INTRINSIC_TABLE[keys[0]]((expr as any)[keys[0]]);
     }
 
     return {
       type: 'object',
-      fields: Object.fromEntries(Object.entries(x)
+      fields: Object.fromEntries(Object.entries(expr)
         .map(([k, v]) => [k, parseExpression(v)])),
     };
   }
 
-  throw new Error(`Unable to parse: ${JSON.stringify(x)}`);
+  throw new Error(`Unable to parse: ${JSON.stringify(expr)}`);
 }
 
 export function parseObject(x: unknown) {
@@ -324,7 +340,7 @@ export function parseObject(x: unknown) {
 
   return Object.fromEntries(
     Object.entries(assertObject(x))
-    .map(([k, v]) => ([k, parseExpression(v)])));
+      .map(([k, v]) => ([k, parseExpression(v)])));
 }
 
 export function ifField<A extends object, K extends keyof A, B>(xs: A, k: K, fn: (x: NonNullable<A[K]>) => B): B | undefined {

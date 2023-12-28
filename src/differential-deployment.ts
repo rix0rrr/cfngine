@@ -1,6 +1,5 @@
 import { Deployment, ResourceDeletion, ResourceDeployment, ResourceDeploymentResult, ResourceUpdate } from './deployment';
 import { Environment } from './environment';
-import { Context, evaluateResource } from './evaluate';
 import { assertString } from './private/types';
 import { Stack } from './stack';
 import { Template } from './template';
@@ -19,7 +18,6 @@ export interface IDifferentialDeploymentHandler {
 }
 
 export class DifferentialDeployment {
-  private readonly context: Context = new Map();
   private readonly deployment: Deployment;
 
   constructor(private readonly stack: Stack, private readonly template: Template, options: DifferentialDeploymentOptions = {}) {

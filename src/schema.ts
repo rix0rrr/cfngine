@@ -7,7 +7,7 @@ export namespace schema {
     readonly Parameters?: Record<string, Parameter>;
     readonly Rules?: Record<string, Rule>;
     readonly Mappings?: Record<string, Mapping>;
-    readonly Conditions?: Record<string, Condition>
+    readonly Conditions?: Record<string, Condition>;
     readonly Transform?: string[];
     readonly Outputs?: Record<string, Output>;
   }
@@ -65,7 +65,7 @@ export namespace schema {
     readonly Value: CfnValue<string>;
     readonly Export?: {
       readonly Name: CfnValue<string>;
-    }
+    };
     readonly Condition?: string;
   }
 
@@ -100,7 +100,7 @@ export namespace schema {
   export type FnSplit = { 'Fn::Split': [string, CfnValue<string>] };
   export type FnSub = { 'Fn::Sub': string | [string, Record<string, CfnValue<string>>] };
 
-  export type FnTransform = { 'Fn::Transform': { readonly Name: string, readonly Parameters: Record<string, CfnValue<any>> } };
+  export type FnTransform = { 'Fn::Transform': { readonly Name: string; readonly Parameters: Record<string, CfnValue<any>> } };
 
   export type Condition =
     | FnEquals

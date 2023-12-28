@@ -16,7 +16,7 @@ test('parsing and reconstituting are each others inverse', () => {
     (s, ctx) => {
       const frags = analyzeSubPattern(s);
       ctx.log(JSON.stringify(frags));
-      return s === reconstitutePattern(frags)
+      return s === reconstitutePattern(frags);
     },
   ));
 });

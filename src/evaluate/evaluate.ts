@@ -1,7 +1,7 @@
-import { SubFragment } from '../private/sub';
-import { TemplateExpression } from '../template';
-import { assertBoolean, assertList, assertNumber, assertString } from '../private/types';
 import { ContextValue, EvaluationContext, NO_VALUE } from './context';
+import { SubFragment } from '../private/sub';
+import { assertBoolean, assertList, assertNumber, assertString } from '../private/types';
+import { TemplateExpression } from '../template';
 
 export interface DeploymentEvaluator {
 }
@@ -161,5 +161,5 @@ export class Evaluator {
  * Make trivial context (no attributes)
  */
 export function makeContext(kv: Record<string, ContextValue>) {
-  return new Map(Object.entries(kv).map(([key, primaryValue]) => [key, { primaryValue }]))
+  return new Map(Object.entries(kv).map(([key, primaryValue]) => [key, { primaryValue }]));
 }

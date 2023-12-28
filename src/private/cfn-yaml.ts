@@ -1,32 +1,67 @@
 import * as yaml from 'yaml';
-import * as yaml_cst from 'yaml/parse-cst';
-import * as yaml_types from 'yaml/types';
 
-const shortForms: yaml_types.Schema.CustomTag[] = [
-  'Base64', 'Cidr', 'FindInMap', 'GetAZs', 'ImportValue', 'Join', 'Sub',
-  'Select', 'Split', 'Transform', 'And', 'Equals', 'If', 'Not', 'Or', 'GetAtt',
-].map(name => intrinsicTag(name, true)).concat(
-  intrinsicTag('Ref', false),
-  intrinsicTag('Condition', false),
-);
+function shortForms(): yaml.Tags {
+  return [
+    mkTag('Ref', 'scalar'),
+    mkTag('Condition', 'scalar'),
+    mkTag('Fn::Sub', 'seq'),
+    mkTag('Fn::Base64', 'scalar'),
+    mkTag('Fn::Cidr', 'seq'),
+    mkTag('Fn::FindInMap', 'seq'),
+    mkTag('Fn::GetAZs', 'scalar'),
+    mkTag('Fn::ImportValue', 'scalar'),
+    mkTag('Fn::Join', 'seq'),
+    mkTag('Fn::Select', 'seq'),
+    mkTag('Fn::Split', 'seq'),
+    mkTag('Fn::Transform', 'map'),
+    mkTag('Fn::And', 'seq'),
+    mkTag('Fn::Equals', 'seq'),
+    mkTag('Fn::If', 'seq'),
+    mkTag('Fn::Not', 'seq'),
+    mkTag('Fn::Or', 'seq'),
+    getAttrString(),
+  ];
+}
 
 export function parseCfnYaml(text: string): any {
+  const customTags = shortForms();
   return yaml.parse(text, {
-    customTags: shortForms,
+    customTags,
     schema: 'core',
+    version: '1.1',
   });
 }
 
-function intrinsicTag(intrinsicName: string, addFnPrefix: boolean): yaml_types.Schema.CustomTag {
+function mkTag(fullName: string, kind: 'scalar' | 'map' | 'seq'): yaml.ScalarTag | yaml.CollectionTag {
+  const shortName = fullName.split('::').slice(-1)[0];
+  const tag = `!${shortName}`;
+
+  if (kind === 'scalar') {
+    return {
+      identify() { return false; },
+      tag,
+      resolve: (value) => {
+        return { [fullName]: value };
+      },
+    } satisfies yaml.ScalarTag;
+  } else {
+    return {
+      identify() { return false; },
+      collection: kind,
+      tag,
+      resolve: (value) => {
+        return { [fullName]: value.toJSON() };
+      },
+    } satisfies yaml.CollectionTag;
+  }
+}
+
+function getAttrString(): yaml.ScalarTag {
   return {
-    identify(value: any) { return typeof value === 'string'; },
-    tag: `!${intrinsicName}`,
-    resolve: (_doc: yaml.Document, cstNode: yaml_cst.CST.Node) => {
-      const ret: any = {};
-      ret[addFnPrefix ? `Fn::${intrinsicName}` : intrinsicName] =
-        // the +1 is to account for the ! the short form begins with
-        parseCfnYaml(cstNode.toString().substring(intrinsicName.length + 1));
-      return ret;
+    identify() { return false; },
+    tag: '!GetAtt',
+    resolve: (value) => {
+      return { 'Fn::GetAtt': value.split('.', 2) };
     },
-  };
+  } satisfies yaml.ScalarTag;
 }

@@ -1,16 +1,16 @@
-import { parseExpression } from "../../src";
+import { parseExpression } from '../../src';
 
 test('booleans are parsed to strings', () => {
   expect(parseExpression(true)).toEqual({
     type: 'string',
-    value: 'true'
+    value: 'true',
   });
 });
 
 test('numbers are parsed to strings', () => {
   expect(parseExpression(5)).toEqual({
     type: 'string',
-    value: '5'
+    value: '5',
   });
 });
 

@@ -1,5 +1,5 @@
-import { RetentionPolicy, TemplateResource } from '../template';
 import { Evaluator } from './evaluate';
+import { RetentionPolicy, TemplateResource } from '../template';
 
 /**
  * An evaluation-time resource
@@ -10,7 +10,7 @@ export interface Resource {
   readonly properties: Record<string, unknown>;
   readonly conditionName?: string;
   readonly deletionPolicy: RetentionPolicy;
-  readonly updateReplacePolicy: RetentionPolicy
+  readonly updateReplacePolicy: RetentionPolicy;
   readonly metadata: Record<string, any>;
   // readonly CreationPolicy?: CreationPolicy;
   // readonly UpdatePolicy?: UpdatePolicy;

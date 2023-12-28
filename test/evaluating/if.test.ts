@@ -1,5 +1,4 @@
-import { ContextRecord, EvaluationContext, parseExpression, Template } from '../../src';
-import { Evaluator } from '../../src/evaluate/evaluate';
+import { ContextRecord, parseExpression, Template } from '../../src';
 import { testEvaluator } from '../util';
 
 test('Fn::If lazily evaluates arguments', () => {
@@ -13,7 +12,7 @@ test('Fn::If lazily evaluates arguments', () => {
   evaluator.context.addReferenceable('Explodes', unevaluatableContextValue());
 
   // THEN - should not explode because the { Ref } is never evaluated
-  expect(evaluator.evaluate(parseExpression({ 'Fn::If': ['Tautology', 'Hooray', { Ref: 'Explodes' }]}))).toEqual('Hooray');
+  expect(evaluator.evaluate(parseExpression({ 'Fn::If': ['Tautology', 'Hooray', { Ref: 'Explodes' }] }))).toEqual('Hooray');
 });
 
 

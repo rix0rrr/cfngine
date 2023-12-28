@@ -1,6 +1,6 @@
-import { assertField, assertString } from "../private/types";
-import { schema } from "../schema";
-import { ifField, parseExpression, TemplateExpression } from "./expression";
+import { ifField, parseExpression, TemplateExpression } from './expression';
+import { assertField, assertString } from '../private/types';
+import { schema } from '../schema';
 
 export interface TemplateOutput {
   readonly description?: string;

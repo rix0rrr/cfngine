@@ -138,7 +138,7 @@ export class TopoQueue<A> {
   private readonly originalGraph: DependencyGraph<A>;
   private readonly currentGraph: DependencyGraph<A>;
 
-  constructor(private readonly graph: DependencyGraph<A>) {
+  constructor(graph: DependencyGraph<A>) {
     this.originalGraph = graph;
     this.currentGraph = graph.copy();
     this.blocked = new Set(graph.keys);

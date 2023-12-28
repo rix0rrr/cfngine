@@ -1,5 +1,5 @@
 import { Environment } from './environment';
-import { Context, ContextRecord, evaluateResource, EvaluationContext, NO_VALUE, Resource } from './evaluate';
+import { Context, evaluateResource, EvaluationContext, Resource } from './evaluate';
 import { Evaluator } from './evaluate/evaluate';
 import { Template } from './template';
 
@@ -91,6 +91,6 @@ function assertSetsEqual<A>(xs: Set<A>, ys: Set<A>) {
   if (yxs.length > 0 || xys.length > 0) {
     const yxss = Array.from(yxs).map(x => `-${x}`);
     const xyss = Array.from(xys).map(x => `+${x}`);
-    throw new Error(`Sets should be the same, found: ${[...xyss,...yxss]}`);
+    throw new Error(`Sets should be the same, found: ${[...xyss, ...yxss]}`);
   }
 }
