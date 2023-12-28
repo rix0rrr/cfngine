@@ -1,12 +1,15 @@
-import { typescript } from 'projen';
+import { ReleasableCommits, typescript } from 'projen';
 const project = new typescript.TypeScriptProject({
-  defaultReleaseBranch: 'main',
   name: 'cfngine',
+  description: 'Local emulation of the CloudFormation engine',
   projenrcTs: true,
+  defaultReleaseBranch: 'main',
 
   deps: ['json-stringify-pretty-compact', 'yaml'], /* Runtime dependencies of this module. */
-  // description: undefined,  /* The description is just a string that helps people understand the purpose of the package. */
   devDeps: ['dedent', 'fast-check'], /* Build dependencies for this module. */
-  // packageName: undefined,  /* The "name" in package.json. */
+
+  release: true,
+  releaseToNpm: true,
+  releasableCommits: ReleasableCommits.featuresAndFixes(),
 });
 project.synth();

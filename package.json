@@ -1,5 +1,6 @@
 {
   "name": "cfngine",
+  "description": "Local emulation of the CloudFormation engine",
   "scripts": {
     "build": "npx projen build",
     "bump": "npx projen bump",
